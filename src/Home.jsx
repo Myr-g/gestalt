@@ -4,7 +4,7 @@ import { readDir } from '@tauri-apps/plugin-fs';
 import './App.css'
 import Library from './Library';
 
-function Home({ session, setSession, setIsPracticing })
+function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticing })
 {
     const [referenceFolders, setReferenceFolders] = useState([]);
 
@@ -21,6 +21,7 @@ function Home({ session, setSession, setIsPracticing })
         setSession(session => ({
             ...session,
             references: references,
+            currentIndex: 0,
             currentReference: references[0],
             shownReferences: [references[0]],
             startTime: Date.now()
@@ -66,7 +67,7 @@ function Home({ session, setSession, setIsPracticing })
     return (
         <>
             <div className='home'>
-                <Library setReferenceFolders={setReferenceFolders} SUPPORTED_IMAGE_EXTENSIONS={SUPPORTED_IMAGE_EXTENSIONS}/>
+                <Library libraryPath={libraryPath} setLibraryPath={setLibraryPath} setReferenceFolders={setReferenceFolders} SUPPORTED_IMAGE_EXTENSIONS={SUPPORTED_IMAGE_EXTENSIONS}/>
 
                 <div className='setup-panel'>
                     <div className='setup-header'>

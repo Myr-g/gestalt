@@ -1,8 +1,8 @@
 [package]
-name = "app"
+name = "Gestalt"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A small app meant to make art studies feel less mentally taxing."
+authors = ["Myr"]
 license = ""
 repository = ""
 edition = "2021"

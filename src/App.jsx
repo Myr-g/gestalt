@@ -5,6 +5,7 @@ import Practice from './Practice';
 
 function App() 
 {
+  const [libraryPath, setLibraryPath] = useState(null);
   const [isPracticing, setIsPracticing] = useState(false);
   const [session, setSession] = useState({
     mode: "Manual",
@@ -46,11 +47,11 @@ function App()
 
         <div className='art-practice-tool-content'>
           {!isPracticing && (
-            <Home session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
+            <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
           )}
 
           {isPracticing && (
-            <Practice session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
+            <Practice libraryPath={libraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
           )}
         </div>
       </div>

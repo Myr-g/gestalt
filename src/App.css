@@ -379,3 +379,43 @@ body {
   justify-content: center;
   margin-top: 0.5rem;
 }
+
+.summary-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+
+  opacity: 0;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+
+  width: 70vw;
+  height: 90vh;
+  padding: 0.5rem;
+  background: var(--bg-paper);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.shown-references img {
+  width: 20vh;
+  height: auto;
+  max-height: 20vh;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.shown-references img.selected {
+  border: 3px solid var(--accent);
+}

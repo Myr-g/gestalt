@@ -5,9 +5,8 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
 import './App.css';
 
-function Library({ setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS })
+function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS })
 {
-    const [libraryPath, setLibraryPath] = useState(null);
     const [directory, setDirectory] = useState([]);
     const [currentDirectory, setCurrentDirectory] = useState(null);
     const [previewImage, setPreviewImage] = useState(null);
