@@ -96,7 +96,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                         <div className='setup-item'>
                             <label>Timer</label>
                             <div className='timer'>
-                                <input type="number" min={1} value={session.timer} onChange={(e) => {setSession(session => ({...session, timer: e.target.value}))}}/>
+                                <input type="number" disabled={session.mode !== "Timed"} min={1} value={session.timer} onChange={(e) => {setSession(session => ({...session, timer: e.target.value}))}}/>
                                 <span>seconds</span>
                             </div>
                         </div>
@@ -116,7 +116,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                             </div>
                         </div>
 
-                        <button disabled={session.selectedFolders.length === 0} onClick={async() => await startSession()}>Start</button>
+                        <button className="start-practice" disabled={session.selectedFolders.length === 0} onClick={async() => await startSession()}>Start</button>
                     </div>
                 </div>
             </div>

@@ -32,7 +32,7 @@ function App()
     <>
       <div className='container'>
         <div className='header'>
-          <span className='app-name'>Art Practice Tool</span>
+          <span className='app-name'>Gestalt</span>
 
           <div className='settings'>
             <div className='settings-item' onClick={() => setTheme(theme === "Dark" ? "Light" : "Dark")}>
@@ -45,7 +45,7 @@ function App()
           </div>
         </div>
 
-        <div className='art-practice-tool-content'>
+        <div>
           {!isPracticing && (
             <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
           )}

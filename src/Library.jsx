@@ -160,7 +160,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
             <div className='library'>
                 <div className='library-header'>
                     <div className='breadcrumb-trail'>
-                        <p className='breadcrumb' onClick={async() => await openDirectory([])}>Library</p>
+                        <span className='breadcrumb' onClick={async() => await openDirectory([])}>Library</span>
 
                         {directory.map((segment, index) => (
                             <span key={index}>
