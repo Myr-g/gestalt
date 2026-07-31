@@ -10,6 +10,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
     const [timeRemaining, setTimeRemaining] = useState(session.timer);
     const [showSummary, setShowSummary] = useState(false);
     const [archiveSelection, setArchiveSelection] = useState([]);
+    const [duration, setDuration] = useState(null);
 
     useEffect(() => {
         if(session.mode !== "Timed")
@@ -74,6 +75,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
     };
 
     const endPractice = () => {
+        getDuration();
         setShowSummary(true);
     };
 
@@ -83,7 +85,11 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
 
-        return `${minutes}m ${remainingSeconds}s`;
+        setDuration(`${minutes}m ${remainingSeconds}s`);
+    };
+
+    const getBaseName = (folderPath) => {
+        return folderPath.split(/[/\\]/).pop();
     };
 
     const archiveReferences = async() => {
@@ -117,17 +123,32 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         <>
             <div className="practice">
                 {session.mode === "Timed" && (
-                    <span>{timeRemaining}</span>
+                    <span className='reference-timer'>{timeRemaining}</span>
                 )}
 
-                <div className="preview-image">
+                <div className="reference-image">
                     <img src={convertFileSrc(session.currentReference.path)} alt={session.currentReference.name}/>
                 </div>
 
                 <div className="reference-actions">
-                    <button onClick={() => previousReference()}>Prev</button>
-                    <button onClick={() => nextReference()}>Next</button>
-                    <button onClick={() => endPractice()}>End Practice</button>
+                    <button onClick={() => previousReference()}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+                            <path d="M0 0h24v24H0z" fill="none" />
+	                        <path fill="currentColor" d="m4.431 12.822l13 9A1 1 0 0 0 19 21V3a1 1 0 0 0-1.569-.823l-13 9a1.003 1.003 0 0 0 0 1.645" />
+                        </svg>
+                    </button>
+                    <button onClick={() => nextReference()}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+	                        <path d="M0 0h24v24H0z" fill="none" />
+	                        <path fill="currentColor" d="M5.536 21.886a1 1 0 0 0 1.033-.064l13-9a1 1 0 0 0 0-1.644l-13-9A1 1 0 0 0 5 3v18a1 1 0 0 0 .536.886" />
+                        </svg>
+                    </button>
+                    <button className='end-button' onClick={() => endPractice()}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
+	                        <path d="M0 0h512v512H0z" fill="none" />
+	                        <path fill="currentColor" d="M392 432H120a40 40 0 0 1-40-40V120a40 40 0 0 1 40-40h272a40 40 0 0 1 40 40v272a40 40 0 0 1-40 40" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -136,31 +157,33 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
                     <div className='summary'>
                         <h2>Session Summary</h2>
 
-                        <label>Duration</label>
-                        <p>{getDuration()}</p>
+                        <div className='summary-info'>
+                            <label>Duration</label>
+                            <p>{duration}</p>
 
-                        <label>References Shown</label>
-                        <span>{session.shownReferences.length}</span>
+                            <label>References Shown</label>
+                            <span>{session.shownReferences.length}</span>
 
-                        <label>Selected Folders</label>
-                        <div className='summary-folders'>
-                            {session.selectedFolders.map(folder => (
-                                <p key={folder}>{folder}</p>
-                            ))}
+                            <label>Selected Folders</label>
+                            <div className='summary-folders'>
+                                {session.selectedFolders.map(getBaseName).join(", ")}
+                            </div>
                         </div>
 
-                        <div className='archive-actions'>
-                            <button onClick={() => setArchiveSelection(session.shownReferences.map(ref => ref.path))}>Select All</button>
-                            <button onClick={() => setArchiveSelection([])}>Select None</button>
-                        </div>
+                        <div className='summary-archive'>
+                            <div className='archive-actions'>
+                                <button onClick={() => setArchiveSelection(session.shownReferences.map(ref => ref.path))}>Select All</button>
+                                <button onClick={() => setArchiveSelection([])}>Select None</button>
+                            </div>
 
-                        <div className='shown-references'>
-                            {session.shownReferences.map(image => (
-                                <img key={image.path} src={convertFileSrc(image.path)} alt={image.name} className={archiveSelection.includes(image.path) ? 'selected' : ''} onClick={() => {
-                                        setArchiveSelection(archiveSelection => archiveSelection.includes(image.path) ? archiveSelection.filter(p => p !== image.path) : [...archiveSelection, image.path]);
-                                    }}
-                                />
-                            ))}
+                            <div className='shown-references'>
+                                {session.shownReferences.map(image => (
+                                    <img key={image.path} src={convertFileSrc(image.path)} alt={image.name} className={archiveSelection.includes(image.path) ? 'selected' : ''} onClick={() => {
+                                            setArchiveSelection(archiveSelection => archiveSelection.includes(image.path) ? archiveSelection.filter(p => p !== image.path) : [...archiveSelection, image.path]);
+                                        }}
+                                    />
+                                ))}
+                            </div>
                         </div>
 
                         <div className='summary-actions'>

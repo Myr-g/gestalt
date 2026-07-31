@@ -121,6 +121,8 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
         const entries = await readDir(folderPath);
 
+        let refCount = 0;
+
         for(const entry of entries)
         {
             if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
@@ -128,10 +130,19 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                 const entryPath = await join(folderPath, entry.name);
                 const destPath = await join (folderDir, entry.name);
                 await copyFile(entryPath, destPath);
+                refCount += 1;
             }
         }
 
         await openDirectory(directory);
+
+        const newFolder = {
+            name: folderName,
+            path: folderDir,
+            referenceCount: refCount
+        };
+
+        setReferenceFolders(referenceFolders => referenceFolders.some(folder => folder.path === folderDir) ? referenceFolders : [...referenceFolders, newFolder]);
     };
 
     useEffect(() => {
