@@ -8,12 +8,14 @@ import './App.css';
 function Practice({ libraryPath, session, setSession, setIsPracticing })
 {
     const [timeRemaining, setTimeRemaining] = useState(session.timer);
+    const [paused, setPaused] = useState(false);
+
     const [showSummary, setShowSummary] = useState(false);
-    const [archiveSelection, setArchiveSelection] = useState([]);
     const [duration, setDuration] = useState(null);
+    const [archiveSelection, setArchiveSelection] = useState([]);
 
     useEffect(() => {
-        if(session.mode !== "Timed")
+        if(session.mode !== "Timed" || paused)
         {
             return;
         }
@@ -23,7 +25,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [session.mode]);
+    }, [session.mode, paused]);
 
     useEffect(() => {
         if(session.mode != "Timed") 
@@ -52,6 +54,8 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         {
             setTimeRemaining(session.timer);
         }
+
+        setPaused(false);
     };
 
     const nextReference = () => {
@@ -72,14 +76,22 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         {
             setTimeRemaining(session.timer);
         }
+
+        setPaused(false);
     };
 
     const endPractice = () => {
+        setPaused(true);
         getDuration();
         setShowSummary(true);
     };
 
     const getDuration = () => {
+        if(showSummary)
+        {
+            return;
+        }
+        
         const miliseconds = Date.now() - session.startTime;
         const seconds = Math.floor(miliseconds / 1000);
         const minutes = Math.floor(seconds / 60);
@@ -133,6 +145,11 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
                     nextReference();
                 }
 
+                if(e.key === " ")
+                {
+                    setPaused(paused => !paused);
+                }
+
                 if(e.key === "Escape")
                 {
                     endPractice();
@@ -165,12 +182,23 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
 	                        <path fill="currentColor" d="m4.431 12.822l13 9A1 1 0 0 0 19 21V3a1 1 0 0 0-1.569-.823l-13 9a1.003 1.003 0 0 0 0 1.645" />
                         </svg>
                     </button>
+
+                    {session.mode === "Timed" && (
+                        <button onClick={() => setPaused(paused => !paused)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16">
+	                            <path d="M0 0h16v16H0z" fill="none" />
+	                            <path fill="currentColor" d="M1 4.804a1 1 0 0 1 1.53-.848l5.113 3.196a1 1 0 0 1 0 1.696L2.53 12.044A1 1 0 0 1 1 11.196zM13.5 4.5A.5.5 0 0 1 14 4h.5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H14a.5.5 0 0 1-.5-.5zm-3-.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h.5a.5.5 0 0 0 .5-.5v-7A.5.5 0 0 0 11 4z" />
+                            </svg>
+                        </button>
+                    )}
+
                     <button onClick={() => nextReference()}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
 	                        <path d="M0 0h24v24H0z" fill="none" />
 	                        <path fill="currentColor" d="M5.536 21.886a1 1 0 0 0 1.033-.064l13-9a1 1 0 0 0 0-1.644l-13-9A1 1 0 0 0 5 3v18a1 1 0 0 0 .536.886" />
                         </svg>
                     </button>
+
                     <button className='end-button' onClick={() => endPractice()}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
 	                        <path d="M0 0h512v512H0z" fill="none" />

@@ -119,8 +119,9 @@ body {
 
 .title-bar-actions {
   display: flex;
-  margin-left: auto;
   gap: 0.3rem;
+  margin-left: auto;
+  margin-right: 0.125rem;
 }
 
 .title-bar-actions button {
@@ -650,7 +651,7 @@ body {
 
 .reference-timer {
   position: fixed;
-  top: 3.5rem;
+  top: 5rem;
   right: 1rem;
 
   padding: 0.5rem 0.8rem;
@@ -695,7 +696,10 @@ body {
 
 .summary-overlay {
   position: fixed;
-  inset: 0;
+  top: 24px;
+  bottom: 0;
+  left: 0;
+  right: 0;
 
   display: flex;
   justify-content: center;
