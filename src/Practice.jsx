@@ -119,6 +119,34 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         }
     };
 
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if(!showSummary)
+            {
+                if(e.key === "ArrowLeft")
+                {
+                    previousReference();
+                }
+
+                if(e.key === "ArrowRight")
+                {
+                    nextReference();
+                }
+
+                if(e.key === "Escape")
+                {
+                    endPractice();
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [previousReference, nextReference, endPractice]);
+
     return(
         <>
             <div className="practice">

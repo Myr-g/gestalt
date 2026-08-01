@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import './App.css';
 import Home from './Home';
 import Practice from './Practice';
@@ -28,9 +29,38 @@ function App()
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  const window = getCurrentWindow();
+
   return (
     <>
       <div className='container'>
+        <div className='title-bar'>
+          <p className='title-bar-app-name'>Gestalt</p>
+
+          <div className='title-bar-actions'>
+            <button onClick={() => window.minimize()}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+	              <path d="M0 0h16v16H0z" fill="none" />
+	              <path fill="currentColor" d="M3 8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 8" />
+              </svg>
+            </button>
+
+            <button onClick={() => window.toggleMaximize()}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+	              <path d="M0 0h16v16H0z" fill="none" />
+	              <path fill="currentColor" d="M4.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3zm0 1h7a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .5-.5" />
+              </svg>
+            </button>
+
+            <button onClick={() => window.close()}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+	              <path d="M0 0h16v16H0z" fill="none" />
+	              <path fill="currentColor" fill-rule="evenodd" d="M4.15 4.15a.5.5 0 0 1 .707 0l3.15 3.15l3.15-3.15a.5.5 0 0 1 .707.707l-3.15 3.15l3.15 3.15a.5.5 0 0 1-.707.707l-3.15-3.15l-3.15 3.15a.5.5 0 0 1-.707-.707l3.15-3.15l-3.15-3.15a.5.5 0 0 1 0-.707" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <div className='header'>
           <span className='app-name'>Gestalt</span>
 
@@ -45,7 +75,7 @@ function App()
           </div>
         </div>
 
-        <div>
+        <div className='content'>
           {!isPracticing && (
             <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
           )}
