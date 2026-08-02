@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { appDataDir, join, basename } from '@tauri-apps/api/path';
-import { mkdir, readDir, copyFile } from '@tauri-apps/plugin-fs';
+import { mkdir, readDir, copyFile, stat } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
 import './App.css';
 
-function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS })
+function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS, currentWindow })
 {
     const [directory, setDirectory] = useState([]);
     const [currentDirectory, setCurrentDirectory] = useState(null);
@@ -112,6 +112,11 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
             return;
         }
 
+        await importFolderFromPath(folderPath);
+        await openDirectory(directory);
+    };
+
+    const importFolderFromPath = async(folderPath) => {
         const folderName = await basename(folderPath);
 
         const referencesDir = await join(libraryPath, ...directory);
@@ -134,8 +139,6 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
             }
         }
 
-        await openDirectory(directory);
-
         const newFolder = {
             name: folderName,
             path: folderDir,
@@ -143,6 +146,18 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         };
 
         setReferenceFolders(referenceFolders => referenceFolders.some(folder => folder.path === folderDir) ? referenceFolders : [...referenceFolders, newFolder]);
+    };
+
+    const importImageFromPath = async(imagePath) => {
+        const imageName = await basename(imagePath);
+
+        const referencesDir = await join(libraryPath, ...directory);
+        const imageDir = await join(referencesDir, imageName);
+
+        if(SUPPORTED_IMAGE_EXTENSIONS.some(extension => imageName.toLowerCase().endsWith(extension)))
+        {
+            await copyFile(imagePath, imageDir);
+        }
     };
 
     useEffect(() => {
@@ -165,6 +180,54 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
             window.removeEventListener("keydown", handleKeyDown);
         };
     }, [previewImage]);
+
+    useEffect(() => {
+        const setup = async () => {
+            const unlisten = await currentWindow.onDragDropEvent(async(event) => {
+                if(event.payload.type === "drop")
+                {
+                    if(directory[0] !== "References")
+                    {
+                        return;
+                    }
+
+                    for(const path of event.payload.paths)
+                    {
+                        const info = await stat(path);
+
+                        if(directory[directory.length - 1] === "References" && !info.isDirectory)
+                        {
+                            continue;
+                        }
+
+                        if(info.isDirectory)
+                        {
+                            await importFolderFromPath(path);
+                        }
+
+                        else if(info.isFile)
+                        {
+                            await importImageFromPath(path);
+                        }
+                    }
+
+                    await openDirectory(directory);
+                }
+            });
+
+            return unlisten;
+        };
+
+        let cleanup;
+
+        setup().then(unlisten => {
+            cleanup = unlisten;
+        });
+
+        return () => {
+            cleanup?.();
+        };
+    }, [directory]);
 
     return (
         <>

@@ -77,7 +77,7 @@ function App()
 
         <div className='content'>
           {!isPracticing && (
-            <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing}/>
+            <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing} window={window}/>
           )}
 
           {isPracticing && (
