@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
 import { mkdir, copyFile, remove } from "@tauri-apps/plugin-fs";
@@ -9,6 +9,30 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
 {
     const [timeRemaining, setTimeRemaining] = useState(session.timer);
     const [paused, setPaused] = useState(false);
+
+    const [zoom, setZoom] = useState(0.25);
+    const [imageSize, setImageSize] = useState({width: 0, height: 0});
+
+    const viewportRef = useRef(null);
+    const fitZoom =
+    viewportRef.current && imageSize.width > 0
+        ? Math.min(
+            viewportRef.current.clientWidth / imageSize.width,
+            viewportRef.current.clientHeight / imageSize.height
+        )
+        : 1;
+
+    const MIN_ZOOM = 0.25;
+    const MAX_ZOOM = 10;
+    const ZOOM_STEP = 0.25; 
+
+    const [dragging, setDragging] = useState(false);
+    const dragStart = useRef({
+        x: 0,
+        y: 0,
+        scrollLeft: 0,
+        scrollTop: 0
+    });
 
     const [showSummary, setShowSummary] = useState(false);
     const [duration, setDuration] = useState(null);
@@ -38,6 +62,95 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
             nextReference();
         }
     }, [timeRemaining, session.mode]);
+
+    const fitImage = () => {
+        if (!viewportRef.current || imageSize.width === 0) {
+            return;
+        }
+
+        const viewport = viewportRef.current;
+
+        const scaleX = viewport.clientWidth / imageSize.width;
+        const scaleY = viewport.clientHeight / imageSize.height;
+
+        setZoom(Math.min(scaleX, scaleY));
+    };
+
+    useEffect(() => {
+        if(imageSize.width > 0)
+        {
+            fitImage();
+        }
+    }, [imageSize]);
+
+    const handleWheel = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const viewport = viewportRef.current;
+        const rect = viewport.getBoundingClientRect();
+
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        setZoom(currentZoom => {
+            const newZoom = e.deltaY < 0 ? Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP) : Math.max(fitZoom, zoom - ZOOM_STEP);
+
+            if(newZoom === currentZoom) 
+            {
+                return currentZoom;
+            }
+
+            const ratio = newZoom / currentZoom;
+
+            const newScrollLeft = (viewport.scrollLeft + mouseX) * ratio - mouseX;
+            const newScrollTop = (viewport.scrollTop + mouseY) * ratio - mouseY;
+
+            requestAnimationFrame(() => {
+                viewport.scrollLeft = newScrollLeft;
+                viewport.scrollTop = newScrollTop;
+            });
+
+            return newZoom;
+        });
+    };
+
+    const handleMouseDown = (e) => {
+        if(e.button !== 0)
+        {
+            return;
+        }
+
+        e.preventDefault();
+
+        setDragging(true);
+
+        dragStart.current = {
+            x: e.clientX,
+            y: e.clientY,
+            scrollLeft: viewportRef.current.scrollLeft,
+            scrollTop: viewportRef.current.scrollTop
+        };
+    };
+
+    const handleMouseMove = (e) => {
+        if(!dragging)
+        {
+            return;
+        }
+
+        e.preventDefault();
+
+        const dx = e.clientX - dragStart.current.x;
+        const dy = e.clientY - dragStart.current.y;
+
+        viewportRef.current.scrollLeft = dragStart.current.scrollLeft - dx;
+        viewportRef.current.scrollTop = dragStart.current.scrollTop - dy;
+    };
+
+    const handleMouseUp = () => {
+        setDragging(false);
+    };
 
     const previousReference = () => {
         if(session.currentIndex === 0)
@@ -171,8 +284,12 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
                     <span className='reference-timer'>{timeRemaining}</span>
                 )}
 
-                <div className="reference-image">
-                    <img src={convertFileSrc(session.currentReference.path)} alt={session.currentReference.name}/>
+                <div className={`reference-viewport ${dragging ? "dragging" : ""}`} ref={viewportRef} onWheel={handleWheel} onPointerDown={handleMouseDown} onPointerMove={handleMouseMove} onPointerUp={handleMouseUp} onPointerLeave={handleMouseUp}>
+                    <div className='reference-canvas-container'>
+                        <div className='reference-canvas' style={{width: `${imageSize.width * zoom}px`, height: `${imageSize.height * zoom}px`}}>
+                            <img src={convertFileSrc(session.currentReference.path)} alt={session.currentReference.name} onLoad={(e) => setImageSize(imageSize => ({...imageSize, width: e.target.naturalWidth, height: e.target.naturalHeight}))}/>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="reference-actions">
