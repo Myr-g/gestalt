@@ -290,7 +290,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                 <div className='images'>
                                     {currentDirectory.images.map((image) => (
                                         <div key={image.path} className='image'>
-                                            <img src={convertFileSrc(image.path)} alt={image.name} onDoubleClick={() => setPreviewImage(image)}></img>
+                                            <img src={convertFileSrc(image.path)} alt={image.name} onDoubleClick={() => setPreviewImage(image)} loading="lazy" decoding="async"/>
                                             <p>{image.name}</p>
                                         </div>
                                     ))}

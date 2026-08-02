@@ -276,6 +276,7 @@ body {
   flex: 1;
   overflow: auto;
   padding: 0.75rem;
+  will-change: scroll-position;
 }
 
 .library-content.subdirectory {
@@ -391,7 +392,6 @@ body {
   gap: 1rem;
   width: 100%;
 }
-
 
 .image {
   display: flex;
@@ -816,6 +816,7 @@ body {
   padding: 0.25rem;
 
   overflow-y: auto;
+  will-change: scroll-position;
 }
 
 .shown-references img {
