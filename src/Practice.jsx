@@ -10,17 +10,13 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
     const [timeRemaining, setTimeRemaining] = useState(session.timer);
     const [paused, setPaused] = useState(false);
 
+    const [workspacePadding, setWorkspacePadding] = useState({x: 0, y: 0});
+
     const [zoom, setZoom] = useState(0.25);
     const [imageSize, setImageSize] = useState({width: 0, height: 0});
 
     const viewportRef = useRef(null);
-    const fitZoom =
-    viewportRef.current && imageSize.width > 0
-        ? Math.min(
-            viewportRef.current.clientWidth / imageSize.width,
-            viewportRef.current.clientHeight / imageSize.height
-        )
-        : 1;
+    const fitZoom = viewportRef.current && imageSize.width > 0 ? Math.min(viewportRef.current.clientWidth / imageSize.width, viewportRef.current.clientHeight / imageSize.height) : 1;
 
     const MIN_ZOOM = 0.25;
     const MAX_ZOOM = 10;
@@ -73,7 +69,13 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         const scaleX = viewport.clientWidth / imageSize.width;
         const scaleY = viewport.clientHeight / imageSize.height;
 
+        setWorkspacePadding({x: viewport.clientWidth / 2, y: viewport.clientHeight / 2});
         setZoom(Math.min(scaleX, scaleY));
+
+        requestAnimationFrame(() => {
+            viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+            viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
+        });
     };
 
     useEffect(() => {
@@ -86,7 +88,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
     const handleWheel = (e) => {
         e.preventDefault();
         e.stopPropagation();
-
+        
         const viewport = viewportRef.current;
         const rect = viewport.getBoundingClientRect();
 
@@ -94,17 +96,33 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         const mouseY = e.clientY - rect.top;
 
         setZoom(currentZoom => {
-            const newZoom = e.deltaY < 0 ? Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP) : Math.max(fitZoom, zoom - ZOOM_STEP);
+            const newZoom = e.deltaY < 0 ? Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP) : Math.max(fitZoom, currentZoom - ZOOM_STEP);
 
             if(newZoom === currentZoom) 
             {
                 return currentZoom;
             }
 
+            if(newZoom === fitZoom)
+            {
+                requestAnimationFrame(() => {
+                    viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+                    viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
+                });
+
+                return newZoom;
+            }
+
             const ratio = newZoom / currentZoom;
 
-            const newScrollLeft = (viewport.scrollLeft + mouseX) * ratio - mouseX;
-            const newScrollTop = (viewport.scrollTop + mouseY) * ratio - mouseY;
+            const imageX = viewport.scrollLeft + mouseX - workspacePadding.x;
+            const imageY = viewport.scrollTop + mouseY - workspacePadding.y;
+
+            const newImageX = imageX * ratio;
+            const newImageY = imageY * ratio;
+
+            const newScrollLeft =  workspacePadding.x + newImageX - mouseX;
+            const newScrollTop = workspacePadding.y + newImageY - mouseY;
 
             requestAnimationFrame(() => {
                 viewport.scrollLeft = newScrollLeft;
@@ -114,6 +132,23 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
             return newZoom;
         });
     };
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+
+        if(!viewport)
+        {
+            return;
+        }
+
+        viewport.addEventListener("wheel", handleWheel, {
+            passive: false
+        });
+
+        return () => {
+            viewport.removeEventListener("wheel", handleWheel);
+        };
+    }, [handleWheel]);
 
     const handleMouseDown = (e) => {
         if(e.button !== 0)
@@ -250,21 +285,25 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
             {
                 if(e.key === "ArrowLeft")
                 {
+                    e.preventDefault();
                     previousReference();
                 }
 
                 if(e.key === "ArrowRight")
                 {
+                    e.preventDefault();
                     nextReference();
                 }
 
                 if(e.key === " ")
                 {
+                    e.preventDefault();
                     setPaused(paused => !paused);
                 }
 
                 if(e.key === "Escape")
                 {
+                    e.preventDefault();
                     endPractice();
                 }
             }
@@ -284,8 +323,8 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
                     <span className='reference-timer'>{timeRemaining}</span>
                 )}
 
-                <div className={`reference-viewport ${dragging ? "dragging" : ""}`} ref={viewportRef} onWheel={handleWheel} onPointerDown={handleMouseDown} onPointerMove={handleMouseMove} onPointerUp={handleMouseUp} onPointerLeave={handleMouseUp}>
-                    <div className='reference-canvas-container'>
+                <div className={`reference-viewport ${dragging ? "dragging" : ""}`} ref={viewportRef} onPointerDown={handleMouseDown} onPointerMove={handleMouseMove} onPointerUp={handleMouseUp} onPointerLeave={handleMouseUp}>
+                    <div className='reference-canvas-container' style={{padding: `${workspacePadding.y}px ${workspacePadding.x}px`}}>
                         <div className='reference-canvas' style={{width: `${imageSize.width * zoom}px`, height: `${imageSize.height * zoom}px`}}>
                             <img src={convertFileSrc(session.currentReference.path)} alt={session.currentReference.name} onLoad={(e) => setImageSize(imageSize => ({...imageSize, width: e.target.naturalWidth, height: e.target.naturalHeight}))}/>
                         </div>

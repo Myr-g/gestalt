@@ -656,19 +656,28 @@ body {
 }
 
 .reference-canvas-container {
-  min-width: max-content;
+  width: max-content;
+  min-width: 100%;
   min-height: 100%;
+  box-sizing: border-box;
 }
 
 .reference-canvas {
-  flex-shrink: 0;
-  margin: auto auto;
+  width: max-content;
+  height: max-content;
+
+  margin: 0;
   padding: 1rem;
+
+  box-sizing: border-box;
 }
 
 .reference-canvas img {
+  display: block;
+
   width: 100%;
   height: 100%;
+
   object-fit: contain;
   user-select: none;
 }
