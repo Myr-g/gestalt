@@ -30,6 +30,8 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         scrollTop: 0
     });
 
+    const [rotation, setRotation] = useState(0);
+
     const [showSummary, setShowSummary] = useState(false);
     const [duration, setDuration] = useState(null);
     const [archiveSelection, setArchiveSelection] = useState([]);
@@ -82,6 +84,8 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         if(imageSize.width > 0)
         {
             fitImage();
+            setRotation(0);
+            setZoom(fitZoom);
         }
     }, [imageSize]);
 
@@ -283,6 +287,17 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         const handleKeyDown = (e) => {
             if(!showSummary)
             {
+                if(e.key === "ArrowUp")
+                {
+                    e.preventDefault();
+                    setRotation(rotation => (rotation + 10) % 360);
+                }
+
+                if(e.key === "ArrowDown")
+                {
+                    e.preventDefault();
+                    setRotation(rotation => (rotation - 10) % 360);
+                }
                 if(e.key === "ArrowLeft")
                 {
                     e.preventDefault();
@@ -326,12 +341,26 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
                 <div className={`reference-viewport ${dragging ? "dragging" : ""}`} ref={viewportRef} onPointerDown={handleMouseDown} onPointerMove={handleMouseMove} onPointerUp={handleMouseUp} onPointerLeave={handleMouseUp}>
                     <div className='reference-canvas-container' style={{padding: `${workspacePadding.y}px ${workspacePadding.x}px`}}>
                         <div className='reference-canvas' style={{width: `${imageSize.width * zoom}px`, height: `${imageSize.height * zoom}px`}}>
-                            <img src={convertFileSrc(session.currentReference.path)} alt={session.currentReference.name} onLoad={(e) => setImageSize(imageSize => ({...imageSize, width: e.target.naturalWidth, height: e.target.naturalHeight}))}/>
+                            <img src={convertFileSrc(session.currentReference.path)} alt={session.currentReference.name} onLoad={(e) => setImageSize(imageSize => ({...imageSize, width: e.target.naturalWidth, height: e.target.naturalHeight}))} style={{transform: `rotate(${rotation}deg)`}}/>
                         </div>
                     </div>
                 </div>
 
                 <div className="reference-actions">
+                    <button onClick={() => setRotation(rotation => (rotation - 10) % 360)}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
+	                        <path d="M0 0h16v16H0z" fill="none" />
+	                        <path fill="currentColor" fillRule="evenodd" d="M8 1.5a6.5 6.5 0 1 1-6.445 7.348a.75.75 0 1 1 1.487-.194A5.001 5.001 0 1 0 4.43 4.5h1.32a.75.75 0 0 1 0 1.5h-3A.75.75 0 0 1 2 5.25v-3a.75.75 0 0 1 1.5 0v1.06A6.48 6.48 0 0 1 8 1.5" clipRule="evenodd" />
+                        </svg>
+                    </button>
+
+                    <button onClick={() => setRotation(rotation => (rotation + 10) % 360)}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
+	                        <path d="M0 0h16v16H0z" fill="none" />
+	                        <path fill="currentColor" fillRule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 6.445 7.348a.75.75 0 1 0-1.487-.194A5.001 5.001 0 1 1 11.57 4.5h-1.32a.75.75 0 0 0 0 1.5h3a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-1.5 0v1.06A6.48 6.48 0 0 0 8 1.5" clipRule="evenodd" />
+                        </svg>
+                    </button>
+
                     <button onClick={() => previousReference()}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
                             <path d="M0 0h24v24H0z" fill="none" />
