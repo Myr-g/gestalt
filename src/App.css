@@ -163,32 +163,144 @@ body {
   color: var(--text-main);
 }
 
-.settings {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.settings-item {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-
-  padding: 0.35rem 0.6rem;
-
+.settings-toggle {
+  background: none;
   border: 1px solid transparent;
   border-radius: 4px;
-  
+
   color: var(--text-muted);
 
   cursor: pointer;
 
-  transition: background 120ms, border-color 120ms, color 120ms;
+  transition: background .15s, border-color .15s, color .15s;
 }
 
-.settings-item:hover {
-  background: var(--breadcrumb-hover);
+.settings-toggle:hover {
   color: var(--text-main);
+}
+
+.settings-overlay {
+  position: fixed;
+  top: 24px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: rgba(0, 0, 0, 0.35);
+
+  z-index: 1000;
+}
+
+.settings {
+  width: 500px;
+  max-height: 85vh;
+  padding: 0 1rem;
+
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+
+  overflow-y: auto;
+}
+
+.settings h2 {
+  margin: 0;
+  padding: 0.9rem 1rem;
+
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--outline);
+
+  font-size: 1rem;
+}
+
+.settings-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.settings-theme {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--outline);
+}
+
+.settings-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.75rem;
+
+  background: var(--bg-folder);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+
+  color: var(--text-main);
+
+  cursor: pointer;
+
+  transition: background .15s, border-color .15s;
+}
+
+.settings-theme-toggle:hover {
+  background: var(--bg-header);
+  border-color: var(--accent);
+}
+
+.settings-shortcuts {
+  padding: 0.5rem;
+}
+
+.settings-shortcuts-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.75rem;
+
+  background: var(--bg-folder);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.shortcut-action {
+  display: flex;
+  align-items: center;
+
+  color: var(--text-main);
+}
+
+.shortcut-key {
+  min-width: 10rem;
+  padding: 0.25rem 0.5rem;
+
+  background: var(--bg-page);
+  border: 1px solid var(--outline);
+  border-radius: 5px;
+
+  color: var(--text-main);
+
+  text-align: center;
+  font-family: monospace;
+  font-size: 0.85rem;
+
+  cursor: pointer;
+
+  transition: background .15s, border-color .15s;
+}
+
+.shortcut-key:hover {
+  background: var(--bg-header);
+  border-color: var(--accent);
 }
 
 .content {

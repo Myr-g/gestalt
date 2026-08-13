@@ -5,7 +5,7 @@ import { mkdir, copyFile, remove } from "@tauri-apps/plugin-fs";
 
 import './App.css';
 
-function Practice({ libraryPath, session, setSession, setIsPracticing })
+function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts })
 {
     const [timeRemaining, setTimeRemaining] = useState(session.timer);
     const [paused, setPaused] = useState(false);
@@ -287,36 +287,36 @@ function Practice({ libraryPath, session, setSession, setIsPracticing })
         const handleKeyDown = (e) => {
             if(!showSummary)
             {
-                if(e.key === "ArrowUp")
+                if(e.key === shortcuts.rotateClockwise)
                 {
                     e.preventDefault();
                     setRotation(rotation => (rotation + 10) % 360);
                 }
 
-                if(e.key === "ArrowDown")
+                if(e.key === shortcuts.rotateCounterClockwise)
                 {
                     e.preventDefault();
                     setRotation(rotation => (rotation - 10) % 360);
                 }
-                if(e.key === "ArrowLeft")
+                if(e.key === shortcuts.previousReference)
                 {
                     e.preventDefault();
                     previousReference();
                 }
 
-                if(e.key === "ArrowRight")
+                if(e.key === shortcuts.nextReference)
                 {
                     e.preventDefault();
                     nextReference();
                 }
 
-                if(e.key === " ")
+                if(e.key === shortcuts.pauseTimer)
                 {
                     e.preventDefault();
                     setPaused(paused => !paused);
                 }
 
-                if(e.key === "Escape")
+                if(e.key === shortcuts.endSession)
                 {
                     e.preventDefault();
                     endPractice();
