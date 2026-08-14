@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { appDataDir, join, basename } from '@tauri-apps/api/path';
-import { mkdir, readDir, copyFile, stat } from '@tauri-apps/plugin-fs';
+import { mkdir, readDir, copyFile, stat, exists, rename } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
 import './App.css';
@@ -9,6 +9,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 {
     const [directory, setDirectory] = useState([]);
     const [currentDirectory, setCurrentDirectory] = useState(null);
+    const [editingFolder, setEditingFolder] = useState(null);
     const [previewImage, setPreviewImage] = useState(null);
 
     const loadLibrary = async() => {
@@ -102,6 +103,39 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         const dir = await loadDirectory(path);
         setCurrentDirectory(dir);
         setDirectory(breadcrumbTrail);
+    };
+
+    const createNewFolder = async() => {
+        const referencesDir = await join(libraryPath, ...directory);
+
+        let defaultName = "New Folder";
+        let folderDir = await join(referencesDir, defaultName);
+
+        let count = 2;
+
+        while(await exists(folderDir))
+        {
+            defaultName = `New Folder (${count})`;
+            folderDir = await join(referencesDir, defaultName);
+            count++;
+        }
+
+        await mkdir(folderDir);
+
+        await openDirectory(directory);
+
+        setEditingFolder(folderDir);
+    };
+
+    const renameFolder = async(folderPath, name) => {
+        const referencesDir = await join(libraryPath, ...directory);
+        const newFolderPath = await join(referencesDir, name);
+        
+        await rename(folderPath, newFolderPath);
+        
+        await openDirectory(directory);
+
+        setEditingFolder(null);
     };
 
     const importFolder = async() => {
@@ -271,7 +305,10 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                 </button>
 
                                 {directory.includes("References") && (
-                                    <button className='import-button' onClick={() => importFolder()}>Import Folder</button>
+                                    <>
+                                        <button className='new-folder-button' onClick={() => createNewFolder()}>New Folder</button>
+                                        <button className='import-button' onClick={() => importFolder()}>Import Folder</button>
+                                    </>
                                 )}
                             </div>
 
@@ -279,7 +316,26 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                 <div className='folders'>
                                     {currentDirectory.folders.map((folder) => (
                                         <div key={folder.path} className='folder' onClick={async() => openDirectory([...directory, folder.name])}>
-                                            <h2>{folder.name}</h2>
+                                            {editingFolder === folder.path ? (
+                                                <input autoFocus onFocus={(e) => e.target.select()} defaultValue={folder.name} onClick={(e) => e.stopPropagation()}
+                                                    onBlur={(e) => renameFolder(folder.path, e.target.value || "New Folder")}
+                                                    onKeyDown={(e) => {
+                                                        if(e.key === "Enter")
+                                                        {
+                                                            e.currentTarget.blur();
+                                                        }
+
+                                                        if(e.key === "Escape")
+                                                        {
+                                                            setEditingFolder(null);
+                                                        }
+                                                    }}
+                                                />
+                                            ) :
+                                            (
+                                                <h2>{folder.name}</h2>
+                                            )}
+                                            
                                             <p>{folder.referenceCount} references</p>
                                         </div>
                                     ))}

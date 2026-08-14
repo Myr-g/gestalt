@@ -36,7 +36,7 @@ function App()
     rotateCounterClockwise: "ArrowDown",
     previousReference: "ArrowLeft",
     nextReference: "ArrowRight",
-    pauseTimer: "Space",
+    pauseTimer: " ",
     endSession: "Escape",
   };
 
@@ -51,25 +51,6 @@ function App()
 
   const [changingShortcut, setChangingShortcut] = useState(null);
 
-  const invalidShortcutKeys = [
-    "Home",
-    "End",
-    "Insert",
-    "Delete",
-    "Tab",
-    "Shift",
-    "Control",
-    "Alt",
-    "Meta",
-    "AudioVolumeMute",
-    "AudioVolumeDown",
-    "AudioVolumeUp",
-    "MediaPlayPause",
-    "MediaTrackNext",
-    "MediaTrackPrevious",
-    "MediaStop"
-  ];
-
   useEffect(() => {
     if(!changingShortcut)
     {
@@ -79,9 +60,9 @@ function App()
     const handleShortcutChange = (e) => {
       e.preventDefault();
 
-      const isFunctionKey = /^F\d{1,2}$/.test(e.key);
+      const validShortcutKey = /^[a-zA-Z0-9]$/.test(e.key) || ["Escape", "Backspace", "Enter", " ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
 
-      if(invalidShortcutKeys.includes(e.key) || isFunctionKey)
+      if(!validShortcutKey)
       {
         return;
       }
@@ -99,6 +80,25 @@ function App()
       window.removeEventListener("keydown", handleShortcutChange);
     };
   }, [changingShortcut]);
+
+  const displayShortcutKey = (key) => {
+    if(key === " ")
+    {
+      return "Space";
+    }
+
+    if(/^[a-z]$/.test(key)) 
+    {
+      return key.toUpperCase();
+    }
+
+    if(key.includes("Arrow"))
+    {
+      return key.substring(5, key.length);
+    }
+
+    return key;
+  };
 
   const currentWindow = getCurrentWindow();
 
@@ -174,32 +174,32 @@ function App()
 
                 <div className='settings-shortcuts-item'>
                   <p className='shortcut-action'>Rotate Clockwise</p>
-                  <p className='shortcut-key' onClick={() => setChangingShortcut("rotateClockwise")}>{changingShortcut === "rotateClockwise" ? "Press a key..." : shortcuts.rotateClockwise}</p>
+                  <p className='shortcut-key' onClick={() => setChangingShortcut("rotateClockwise")}>{changingShortcut === "rotateClockwise" ? "Press a key..." : displayShortcutKey(shortcuts.rotateClockwise)}</p>
                 </div>
 
                 <div className='settings-shortcuts-item'>
                   <p className='shortcut-action'>Rotate Counter-Clockwise</p>
-                  <p className='shortcut-key' onClick={() => setChangingShortcut("rotateCounterClockwise")}>{changingShortcut === "rotateCounterClockwise" ? "Press a key..." :shortcuts.rotateCounterClockwise}</p>
+                  <p className='shortcut-key' onClick={() => setChangingShortcut("rotateCounterClockwise")}>{changingShortcut === "rotateCounterClockwise" ? "Press a key..." : displayShortcutKey(shortcuts.rotateCounterClockwise)}</p>
                 </div>
 
                 <div className='settings-shortcuts-item'>
                   <p className='shortcut-action'>Previous Reference</p>
-                  <p className='shortcut-key' onClick={() => setChangingShortcut("previousReference")}>{changingShortcut === "previousReference" ? "Press a key..." : shortcuts.previousReference}</p>
+                  <p className='shortcut-key' onClick={() => setChangingShortcut("previousReference")}>{changingShortcut === "previousReference" ? "Press a key..." : displayShortcutKey(shortcuts.previousReference)}</p>
                 </div>
 
                 <div className='settings-shortcuts-item'>
                   <p className='shortcut-action'>Next Reference</p>
-                  <p className='shortcut-key' onClick={() => setChangingShortcut("nextReference")}>{changingShortcut === "nextReference" ? "Press a key..." : shortcuts.nextReference}</p>
+                  <p className='shortcut-key' onClick={() => setChangingShortcut("nextReference")}>{changingShortcut === "nextReference" ? "Press a key..." : displayShortcutKey(shortcuts.nextReference)}</p>
                 </div>
 
                 <div className='settings-shortcuts-item'>
                   <p className='shortcut-action'>Pause Timer</p>
-                  <p className='shortcut-key' onClick={() => setChangingShortcut("pauseTimer")}>{changingShortcut === "pauseTimer" ? "Press a key..." : shortcuts.pauseTimer}</p>
+                  <p className='shortcut-key' onClick={() => setChangingShortcut("pauseTimer")}>{changingShortcut === "pauseTimer" ? "Press a key..." : displayShortcutKey(shortcuts.pauseTimer)}</p>
                 </div>
 
                 <div className='settings-shortcuts-item'>
                   <p className='shortcut-action'>End Session</p>
-                  <p className='shortcut-key' onClick={() => setChangingShortcut("endSession")}>{changingShortcut === "endSession" ? "Press a key..." : shortcuts.endSession}</p>
+                  <p className='shortcut-key' onClick={() => setChangingShortcut("endSession")}>{changingShortcut === "endSession" ? "Press a key..." : displayShortcutKey(shortcuts.endSession)}</p>
                 </div>
               </div>
             </div>

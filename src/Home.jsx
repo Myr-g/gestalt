@@ -96,7 +96,19 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                         <div className='setup-item'>
                             <label>Timer</label>
                             <div className='timer'>
-                                <input type="number" disabled={session.mode !== "Timed"} min={1} value={session.timer} onChange={(e) => {setSession(session => ({...session, timer: e.target.value}))}}/>
+                                <input type="number" disabled={session.mode !== "Timed"} min={1} value={session.timer} onChange={(e) => {setSession(session => ({...session, timer: e.target.value}))}} onBlur={(e) => {
+                                    const value = Number(e.target.value);
+                                    
+                                    if(!value)
+                                    {
+                                        setSession(session => ({...session, timer: 30}))
+                                    }
+
+                                    else if(value < 1)
+                                    {
+                                        setSession(session => ({...session, timer: 1}))
+                                    }
+                                }}/>
                                 <span>seconds</span>
                             </div>
                         </div>
