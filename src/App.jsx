@@ -104,7 +104,7 @@ function App()
 
   return (
     <>
-      <div className='container'>
+      <div className='container' onContextMenu={(e) => e.preventDefault()}>
         <div className='title-bar'>
           <p className='title-bar-app-name'>Gestalt</p>
 

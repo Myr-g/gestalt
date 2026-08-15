@@ -553,12 +553,10 @@ body {
 
   border: 1px solid var(--border);
   border-radius: 3px;
-
-  margin-bottom: 0.4rem;
 }
 
 .image p {
-  margin: 0;
+  margin: 0.2rem 0;
 
   font-size: .85rem;
 
@@ -570,9 +568,80 @@ body {
   white-space: nowrap;
 }
 
+.image input {
+  margin-top: 0.2rem;
+  padding: 0.1rem;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+
+  color: var(--text-main);
+}
+
+.context-menu {
+  position: fixed;
+  
+  padding: 0.5rem 1rem;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 0.5rem;
+
+  background: var(--bg-folder);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+
+  overflow-y: auto;
+}
+
+.context-menu button {
+  min-width: 60px;
+  padding: 0.5rem;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+    
+  background: var(--bg-folder);
+  border: 1px solid transparent;
+  border-radius: 6px;
+
+  color: var(--text-main);
+}
+
+.context-menu button:hover {
+  background: var(--bg-header);
+  border: 1px solid var(--accent);
+}
+
+.context-menu button:disabled {
+  opacity: 0.5;
+}
+
+.context-menu button:disabled:hover {
+  background: var(--bg-folder);
+  border-color: transparent;
+}
+
+.context-menu p {
+  font-size: 0.75rem;
+}
+
 .preview-image-overlay {
   position: fixed;
-  inset: 0;
+  top: 24px;
+  bottom: 0;
+  left: 0;
+  right: 0;
 
   display: flex;
   justify-content: center;
@@ -594,7 +663,7 @@ body {
 
   max-width: 92vw;
   max-height: 92vh;
-  padding: 0.5rem;
+  padding: 0.35rem;
 
   background: var(--bg-panel);
 

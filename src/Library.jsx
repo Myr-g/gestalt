@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { appDataDir, join, basename } from '@tauri-apps/api/path';
-import { mkdir, readDir, copyFile, stat, exists, rename } from '@tauri-apps/plugin-fs';
+import { mkdir, readDir, copyFile, stat, exists, rename, remove } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
 import './App.css';
@@ -9,7 +9,10 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 {
     const [directory, setDirectory] = useState([]);
     const [currentDirectory, setCurrentDirectory] = useState(null);
-    const [editingFolder, setEditingFolder] = useState(null);
+    const [editingPath, setEditingPath] = useState(null);
+    const [context, setContext] = useState(null);
+    const contextRef = useRef(null);
+    const [clipboard, setClipboard] = useState(null);
     const [previewImage, setPreviewImage] = useState(null);
 
     const loadLibrary = async() => {
@@ -78,13 +81,16 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                 const subfolderPath = await join(folderPath, entry.name);
                 const refCount = await countReferences(subfolderPath);
 
-                folders.push({name: entry.name, path: subfolderPath, referenceCount: refCount});
+                folders.push({path: subfolderPath, name: entry.name, referenceCount: refCount});
             }
 
             else if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
             {
                 const imagePath = await join(folderPath, entry.name);
-                images.push({name: entry.name, path: imagePath});
+                const imageExtension = SUPPORTED_IMAGE_EXTENSIONS.find(extension => entry.name.toLowerCase().endsWith(extension));
+                const imageName = entry.name.slice(0, -imageExtension.length);
+
+                images.push({path: imagePath, name: imageName, extension: imageExtension});
             }
         }
 
@@ -124,18 +130,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
         await openDirectory(directory);
 
-        setEditingFolder(folderDir);
-    };
-
-    const renameFolder = async(folderPath, name) => {
-        const referencesDir = await join(libraryPath, ...directory);
-        const newFolderPath = await join(referencesDir, name);
-        
-        await rename(folderPath, newFolderPath);
-        
-        await openDirectory(directory);
-
-        setEditingFolder(null);
+        setEditingPath(folderDir);
     };
 
     const importFolder = async() => {
@@ -194,6 +189,49 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         }
     };
 
+    const renameItem = async(path, name, extension = null) => {
+        const referencesDir = await join(libraryPath, ...directory);
+        let itemPath;
+
+        if(extension)
+        {
+            const imageBasename = name + extension;
+            itemPath = await join(referencesDir, imageBasename);
+        }
+
+        else
+        {
+            itemPath = await join(referencesDir, name);
+        }
+        
+        await rename(path, itemPath);
+        
+        await openDirectory(directory);
+
+        setEditingPath(null);
+    };
+
+    const pasteItem = async(path) => {
+        const info = await stat(path);
+
+        if(directory[directory.length - 1] === "References" && !info.isDirectory)
+        {
+            return false;
+        }
+
+        if(info.isDirectory)
+        {
+            await importFolderFromPath(path);
+        }
+
+        else if(info.isFile)
+        {
+            await importImageFromPath(path);
+        }
+
+        return true;
+    };
+
     useEffect(() => {
         loadLibrary();
     }, []);
@@ -216,6 +254,27 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
     }, [previewImage]);
 
     useEffect(() => {
+        function closeContextMenu(e) 
+        {
+            if(contextRef.current && !contextRef.current.contains(e.target))
+            {
+                setContext(null);
+            }
+        }
+
+        if(context) 
+        {
+            document.addEventListener("mousedown", closeContextMenu);
+            document.addEventListener("touchstart", closeContextMenu);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", closeContextMenu);
+            document.removeEventListener("touchstart", closeContextMenu);
+        };
+    }, [context]);
+
+    useEffect(() => {
         const setup = async () => {
             const unlisten = await currentWindow.onDragDropEvent(async(event) => {
                 if(event.payload.type === "drop")
@@ -227,22 +286,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
                     for(const path of event.payload.paths)
                     {
-                        const info = await stat(path);
-
-                        if(directory[directory.length - 1] === "References" && !info.isDirectory)
-                        {
-                            continue;
-                        }
-
-                        if(info.isDirectory)
-                        {
-                            await importFolderFromPath(path);
-                        }
-
-                        else if(info.isFile)
-                        {
-                            await importImageFromPath(path);
-                        }
+                        await pasteItem(path);
                     }
 
                     await openDirectory(directory);
@@ -279,7 +323,16 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                     </div>
                 </div>
 
-                <div className={`library-content ${currentDirectory === null ? "" : "subdirectory"}`}>
+                <div className={`library-content ${currentDirectory === null ? "" : "subdirectory"}`} onContextMenu={(e) => {
+                    e.preventDefault();
+
+                    if(directory.length === 0)
+                    {
+                        return;
+                    }
+                    
+                    setContext({path: null, x: e.clientX, y: e.clientY});
+                }}>
                     {!currentDirectory && (
                         <>
                             <div className='library-root'>
@@ -297,7 +350,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                     {currentDirectory && (
                         <>
                             <div className='actions'>
-                                <button className='back-button' onClick={() => openDirectory(directory.slice(0, -1))}>
+                                <button className='back-button' onClick={async() => await openDirectory(directory.slice(0, -1))}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                         <path d="M0 0h24v24H0z" fill="none" />
 	                                    <path fill="currentColor" d="M16.62 2.99a1.25 1.25 0 0 0-1.77 0L6.54 11.3a.996.996 0 0 0 0 1.41l8.31 8.31c.49.49 1.28.49 1.77 0s.49-1.28 0-1.77L9.38 12l7.25-7.25c.48-.48.48-1.28-.01-1.76" />
@@ -315,10 +368,14 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                             {currentDirectory.folders.length > 0 && (
                                 <div className='folders'>
                                     {currentDirectory.folders.map((folder) => (
-                                        <div key={folder.path} className='folder' onClick={async() => openDirectory([...directory, folder.name])}>
-                                            {editingFolder === folder.path ? (
+                                        <div key={folder.path} className='folder' onClick={async() => await openDirectory([...directory, folder.name])} onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setContext({path: folder.path, x: e.clientX, y: e.clientY});
+                                        }}>
+                                            {editingPath === folder.path ? (
                                                 <input autoFocus onFocus={(e) => e.target.select()} defaultValue={folder.name} onClick={(e) => e.stopPropagation()}
-                                                    onBlur={(e) => renameFolder(folder.path, e.target.value || "New Folder")}
+                                                    onBlur={(e) => renameItem(folder.path, e.target.value || "New Folder")}
                                                     onKeyDown={(e) => {
                                                         if(e.key === "Enter")
                                                         {
@@ -327,7 +384,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
                                                         if(e.key === "Escape")
                                                         {
-                                                            setEditingFolder(null);
+                                                            setEditingPath(null);
                                                         }
                                                     }}
                                                 />
@@ -345,11 +402,92 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                             {currentDirectory.images.length > 0 && (
                                 <div className='images'>
                                     {currentDirectory.images.map((image) => (
-                                        <div key={image.path} className='image'>
+                                        <div key={image.path} className='image' onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setContext({path: image.path, x: e.clientX, y: e.clientY});
+                                        }}>
                                             <img src={convertFileSrc(image.path)} alt={image.name} onDoubleClick={() => setPreviewImage(image)} loading="lazy" decoding="async"/>
-                                            <p>{image.name}</p>
+
+                                            {editingPath === image.path ? (
+                                                <input autoFocus onFocus={(e) => e.target.select()} defaultValue={image.name} onClick={(e) => e.stopPropagation()}
+                                                    onBlur={(e) => renameItem(image.path, e.target.value || "New Image", image.extension)}
+                                                    onKeyDown={(e) => {
+                                                        if(e.key === "Enter")
+                                                        {
+                                                            e.currentTarget.blur();
+                                                        }
+
+                                                        if(e.key === "Escape")
+                                                        {
+                                                            setEditingPath(null);
+                                                        }
+                                                    }}
+                                                />
+                                            ) :
+                                            (
+                                                <p>{image.name}</p>
+                                            )}
                                         </div>
                                     ))}
+                                </div>
+                            )}
+
+                            {context && (
+                                <div ref={contextRef} className='context-menu' style={{ left: context.x, top: context.y }}>
+                                    <button disabled={!context.path} onClick={() => {
+                                        setEditingPath(context.path);
+                                        setContext(null);
+                                    }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
+	                                        <path d="M0 0h16v16H0z" fill="none" />
+	                                        <path fill="var(--accent)" d="M8 .5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1H11v14h1.5a.5.5 0 0 1 0 1h-4a.5.5 0 0 1 0-1H10V1H8.5A.5.5 0 0 1 8 .5" />
+	                                        <path fill="var(--accent)" fillRule="evenodd" d="M5.46 4.31a.501.501 0 0 0-.924 0l-2.5 6a.5.5 0 0 0 .923.385l.705-1.69h2.67l.705 1.69a.5.5 0 0 0 .923-.385l-2.5-6zM4.998 5.8L5.915 8h-1.83l.917-2.2z" clipRule="evenodd" />
+	                                        <path fill="currentColor" d="M8.5 3a.5.5 0 0 0 0-1H4.8c-1.68 0-2.52 0-3.16.327a3.02 3.02 0 0 0-1.31 1.31c-.327.642-.327 1.48-.327 3.16v2.4c0 1.68 0 2.52.327 3.16a3.02 3.02 0 0 0 1.31 1.31c.642.327 1.48.327 3.16.327h3.7a.5.5 0 0 0 0-1H4.8c-.857 0-1.44 0-1.89-.038c-.438-.035-.663-.1-.819-.18a2 2 0 0 1-.874-.874c-.08-.156-.145-.38-.18-.819c-.037-.45-.038-1.03-.038-1.89v-2.4c0-.857.001-1.44.038-1.89c.036-.438.101-.663.18-.819c.192-.376.498-.682.874-.874c.156-.08.381-.145.819-.18c.45-.036 1.03-.037 1.89-.037h3.7zm4 10a.506.506 0 0 0-.496.504c0 .278.226.503.504.496c.863-.02 1.41-.09 1.86-.318a3 3 0 0 0 1.31-1.31c.327-.642.327-1.48.327-3.16v-2.4c0-1.68 0-2.52-.327-3.16a3 3 0 0 0-1.31-1.31c-.449-.229-.995-.298-1.86-.318a.494.494 0 0 0-.504.496c0 .275.222.497.496.504q.333.007.592.029c.438.035.663.1.819.18c.376.192.682.498.874.874c.08.156.145.38.18.819c.037.45.038 1.03.038 1.89v2.4c0 .857-.001 1.44-.038 1.89c-.036.438-.101.663-.18.819a2 2 0 0 1-.874.874c-.156.08-.381.145-.819.18q-.26.02-.592.028z" />
+                                        </svg>
+                                        <p>Rename</p>
+                                    </button>
+
+                                    <button disabled={!context.path} onClick={() => {
+                                        setClipboard(context);
+                                        setContext(null);
+                                    }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
+                                            <path d="M0 0h16v16H0z" fill="none" />
+                                            <path fill="var(--accent)" fillRule="evenodd" d="M7.5 3A2.5 2.5 0 0 0 5 5.5v8A2.5 2.5 0 0 0 7.5 16h6a2.5 2.5 0 0 0 2.5-2.5v-8A2.5 2.5 0 0 0 13.5 3zM6 5.5A1.5 1.5 0 0 1 7.5 4h6A1.5 1.5 0 0 1 15 5.5v8a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 6 13.5z" clipRule="evenodd" />
+                                            <path fill="currentColor" d="M0 2.5A2.5 2.5 0 0 1 2.5 0h6c.979 0 1.83.562 2.24 1.38c.152.303-.104.618-.443.618c-.227 0-.422-.149-.549-.338a1.5 1.5 0 0 0-1.24-.662h-6a1.5 1.5 0 0 0-1.5 1.5v8a1.5 1.5 0 0 0 1.5 1.5h1a.5.5 0 0 1 0 1h-1a2.5 2.5 0 0 1-2.5-2.5v-8z" />
+                                        </svg>
+                                        <p>Copy</p>
+                                    </button>
+
+                                    <button disabled={!clipboard} onClick={async() => { 
+                                        if(await pasteItem(clipboard.path))
+                                        {
+                                            await openDirectory(directory);
+                                            setClipboard(null); 
+                                        }
+                                            
+                                        setContext(null);
+                                    }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
+	                                        <path d="M0 0h16v16H0z" fill="none" />
+	                                        <path fill="var(--accent)" fillRule="evenodd" d="M14 8h-4a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1m-4-1c-1.1 0-2 .895-2 2v5c0 1.1.895 2 2 2h4c1.1 0 2-.895 2-2V9c0-1.1-.895-2-2-2z" clipRule="evenodd" />
+	                                        <path fill="currentColor" fillRule="evenodd" d="M9 3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h5v1H2c-1.1 0-2-.895-2-2V4c0-1.1.895-2 2-2h1a1 1 0 0 1 1-1h.268a1.998 1.998 0 0 1 3.46 0h.268a1 1 0 0 1 1 1h1c1.1 0 2 .895 2 2v2h-1V4a1 1 0 0 0-1-1h-1zM4.27 2a1 1 0 0 0 .866-.499a1 1 0 0 1 1.734 0A1 1 0 0 0 7.736 2h.018a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-3.5a.25.25 0 0 1-.25-.25v-.5a.25.25 0 0 1 .25-.25h.017z" clipRule="evenodd" />
+                                        </svg>
+                                        <p>Paste</p>
+                                    </button>
+
+                                    <button disabled={!context.path} onClick={async() => {
+                                        await remove(context.path);
+                                        await openDirectory(directory);
+                                        setContext(null);
+                                    }}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                            <path d="M0 0h24v24H0z" fill="none" />
+	                                        <path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16l-1.58 14.22A2 2 0 0 1 16.432 22H7.568a2 2 0 0 1-1.988-1.78zm3.345-2.853A2 2 0 0 1 9.154 2h5.692a2 2 0 0 1 1.81 1.147L18 6H6zM2 6h20m-12 5v5m4-5v5" />
+                                        </svg>
+                                        <p>Delete</p>
+                                    </button>
                                 </div>
                             )}
 
