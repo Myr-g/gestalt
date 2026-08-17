@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { appDataDir, join, basename } from '@tauri-apps/api/path';
-import { mkdir, readDir, copyFile, stat, exists, rename, remove } from '@tauri-apps/plugin-fs';
+import { appDataDir, join } from '@tauri-apps/api/path';
+import { mkdir, readDir } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { open } from '@tauri-apps/plugin-dialog';
+import { createFolder, importFolderFromDialog, importFolderFromPath, importImageFromPath, renameItem, pasteItem, deleteItem } from './LibraryFS';
 import './App.css';
 
 function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS, currentWindow })
@@ -92,7 +92,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
             }
         }
 
-        return {folders, images};
+        return {path: folderPath, folders, images};
     };
 
     const openDirectory = async(breadcrumbTrail) => {
@@ -107,125 +107,6 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         const dir = await loadDirectory(path);
         setCurrentDirectory(dir);
         setDirectory(breadcrumbTrail);
-    };
-
-    const createNewFolder = async() => {
-        const referencesDir = await join(libraryPath, ...directory);
-
-        let defaultName = "New Folder";
-        let folderDir = await join(referencesDir, defaultName);
-
-        let count = 2;
-
-        while(await exists(folderDir))
-        {
-            defaultName = `New Folder (${count})`;
-            folderDir = await join(referencesDir, defaultName);
-            count++;
-        }
-
-        await mkdir(folderDir);
-        await openDirectory(directory);
-        await refreshReferenceFolders();
-        setEditingPath(folderDir);
-    };
-
-    const importFolder = async() => {
-        const folderPath = await open({directory: true, multiple: false});
-
-        if(!folderPath)
-        {
-            return;
-        }
-
-        await importFolderFromPath(folderPath);
-        await openDirectory(directory);
-    };
-
-    const importFolderFromPath = async(folderPath) => {
-        const folderName = await basename(folderPath);
-
-        const referencesDir = await join(libraryPath, ...directory);
-        const folderDir = await join(referencesDir, folderName);
-
-        await mkdir(folderDir, {recursive: true});
-
-        const entries = await readDir(folderPath);
-
-        let refCount = 0;
-
-        for(const entry of entries)
-        {
-            if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
-            {
-                const entryPath = await join(folderPath, entry.name);
-                const destPath = await join (folderDir, entry.name);
-                await copyFile(entryPath, destPath);
-                refCount += 1;
-            }
-        }
-
-        const newFolder = {
-            name: folderName,
-            path: folderDir,
-            referenceCount: refCount
-        };
-
-        await refreshReferenceFolders();
-    };
-
-    const importImageFromPath = async(imagePath) => {
-        const imageName = await basename(imagePath);
-
-        const referencesDir = await join(libraryPath, ...directory);
-        const imageDir = await join(referencesDir, imageName);
-
-        if(SUPPORTED_IMAGE_EXTENSIONS.some(extension => imageName.toLowerCase().endsWith(extension)))
-        {
-            await copyFile(imagePath, imageDir);
-        }
-    };
-
-    const renameItem = async(path, name, extension = null) => {
-        const referencesDir = await join(libraryPath, ...directory);
-        let itemPath;
-
-        if(extension)
-        {
-            const imageBasename = name + extension;
-            itemPath = await join(referencesDir, imageBasename);
-        }
-
-        else
-        {
-            itemPath = await join(referencesDir, name);
-        }
-        
-        await rename(path, itemPath);
-        await openDirectory(directory);
-        await refreshReferenceFolders();
-        setEditingPath(null);
-    };
-
-    const pasteItem = async(path) => {
-        const info = await stat(path);
-
-        if(directory[directory.length - 1] === "References" && !info.isDirectory)
-        {
-            return false;
-        }
-
-        if(info.isDirectory)
-        {
-            await importFolderFromPath(path);
-        }
-
-        else if(info.isFile)
-        {
-            await importImageFromPath(path);
-        }
-
-        return true;
     };
 
     useEffect(() => {
@@ -282,7 +163,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
                     for(const path of event.payload.paths)
                     {
-                        await pasteItem(path);
+                        await pasteItem(directory, currentDirectory.path, path);
                     }
 
                     await openDirectory(directory);
@@ -355,8 +236,24 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
                                 {directory.includes("References") && (
                                     <>
-                                        <button className='new-folder-button' onClick={() => createNewFolder()}>New Folder</button>
-                                        <button className='import-button' onClick={() => importFolder()}>Import Folder</button>
+                                        <button className='new-folder-button' onClick={async() => {
+                                            const folderDir = await createFolder(currentDirectory.path);
+
+                                            if(folderDir)
+                                            {
+                                                await openDirectory(directory);
+                                                await refreshReferenceFolders();
+                                                setEditingPath(folderDir);
+                                            }
+                                        }}>New Folder</button>
+
+                                        <button className='import-button' onClick={async() => {
+                                            if(await importFolderFromDialog(currentDirectory.path))
+                                            {
+                                               await openDirectory(directory);
+                                               await refreshReferenceFolders(); 
+                                            }
+                                        }}>Import Folder</button>
                                     </>
                                 )}
                             </div>
@@ -371,7 +268,24 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                         }}>
                                             {editingPath === folder.path ? (
                                                 <input autoFocus onFocus={(e) => e.target.select()} defaultValue={folder.name} onClick={(e) => e.stopPropagation()}
-                                                    onBlur={(e) => renameItem(folder.path, e.target.value || "New Folder")}
+                                                    onBlur={async(e) => {
+                                                        const newName = e.target.value.trim();
+
+                                                        if(newName === folder.name)
+                                                        {
+                                                            setEditingPath(null);
+                                                            return;
+                                                        }
+
+
+                                                        if(await renameItem(currentDirectory.path, folder.path, newName || "New Folder"))
+                                                        {
+                                                            await openDirectory(directory);
+                                                            await refreshReferenceFolders();
+                                                            setEditingPath(null);
+                                                        }
+                                                    }}
+
                                                     onKeyDown={(e) => {
                                                         if(e.key === "Enter")
                                                         {
@@ -398,16 +312,32 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                             {currentDirectory.images.length > 0 && (
                                 <div className='images'>
                                     {currentDirectory.images.map((image) => (
-                                        <div key={image.path} className={`image ${context ? context.path === image.path ? "selected" : "" : ""}`} onContextMenu={(e) => {
+                                        <div key={image.path} className={`image ${context ? context.path === image.path ? "selected" : "" : ""}`} onDoubleClick={() => setPreviewImage(image)} onContextMenu={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setContext({path: image.path, x: e.clientX, y: e.clientY});
                                         }}>
-                                            <img src={convertFileSrc(image.path)} alt={image.name} onDoubleClick={() => setPreviewImage(image)} loading="lazy" decoding="async"/>
+                                            <img src={convertFileSrc(image.path)} alt={image.name} loading="lazy" decoding="async"/>
 
                                             {editingPath === image.path ? (
-                                                <input autoFocus onFocus={(e) => e.target.select()} defaultValue={image.name} onClick={(e) => e.stopPropagation()}
-                                                    onBlur={(e) => renameItem(image.path, e.target.value || "New Image", image.extension)}
+                                                <input autoFocus onFocus={(e) => e.target.select()} defaultValue={image.name} onClick={(e) => e.stopPropagation()} onDoubleClick={(e)=> e.stopPropagation()}
+                                                    onBlur={async(e) => { 
+                                                        const newName = e.target.value.trim();
+
+                                                        if(newName === image.name)
+                                                        {
+                                                            setEditingPath(null);
+                                                            return;
+                                                        }
+
+                                                        if(await renameItem(currentDirectory.path, image.path, newName || "New Image", image.extension))
+                                                        {
+                                                            await openDirectory(directory);
+                                                            await refreshReferenceFolders();
+                                                            setEditingPath(null);
+                                                        }
+                                                    }}
+
                                                     onKeyDown={(e) => {
                                                         if(e.key === "Enter")
                                                         {
@@ -457,7 +387,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                     </button>
 
                                     <button disabled={!clipboard} onClick={async() => { 
-                                        if(await pasteItem(clipboard.path))
+                                        if(await pasteItem(directory, currentDirectory.path, clipboard.path))
                                         {
                                             await openDirectory(directory);
                                             setClipboard(null); 
@@ -474,10 +404,12 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                     </button>
 
                                     <button disabled={!context.path} onClick={async() => {
-                                        await remove(context.path, { recursive: true });
-                                        await openDirectory(directory);
-                                        await refreshReferenceFolders();
-                                        setContext(null);
+                                        if(await deleteItem(context.path))
+                                        {
+                                            await openDirectory(directory);
+                                            await refreshReferenceFolders();
+                                            setContext(null);
+                                        }
                                     }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                             <path d="M0 0h24v24H0z" fill="none" />
