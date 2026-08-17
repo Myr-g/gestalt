@@ -35,28 +35,26 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         }
     };
 
-    const getAllFolders = async(referencesPath) => {
-        const folders = [];
+    const getAllFolders = async(folderPath, folderName = "References") => {
+        const entries = await readDir(folderPath);
+        const subfolders = [];
 
-        const recurse = async(folderPath) => {
-            const entries = await readDir(folderPath);
-
-            for(const entry of entries)
+        for(const entry of entries)
+        {
+            if(entry.isDirectory)
             {
-                if(entry.isDirectory)
-                {
-                    const path = await join(folderPath, entry.name);
-                    const refCount = await countReferences(path);
-
-                    folders.push({name: entry.name, path: path, referenceCount: refCount});
-
-                    await recurse(path);
-                }
+                const path = await join(folderPath, entry.name);
+                subfolders.push(await getAllFolders(path, entry.name));
             }
-        };
+        }
 
-        await recurse(referencesPath);
-        return folders;
+        return { path: folderPath, name: folderName, subfolders: subfolders };
+    };
+
+    const refreshReferenceFolders = async() => {
+        const referencesDir = await join(libraryPath, "References");
+        const folders = await getAllFolders(referencesDir);
+        setReferenceFolders(folders);
     };
 
     const countReferences = async(folderPath) => {
@@ -127,9 +125,8 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         }
 
         await mkdir(folderDir);
-
         await openDirectory(directory);
-
+        await refreshReferenceFolders();
         setEditingPath(folderDir);
     };
 
@@ -174,7 +171,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
             referenceCount: refCount
         };
 
-        setReferenceFolders(referenceFolders => referenceFolders.some(folder => folder.path === folderDir) ? referenceFolders : [...referenceFolders, newFolder]);
+        await refreshReferenceFolders();
     };
 
     const importImageFromPath = async(imagePath) => {
@@ -205,9 +202,8 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         }
         
         await rename(path, itemPath);
-        
         await openDirectory(directory);
-
+        await refreshReferenceFolders();
         setEditingPath(null);
     };
 
@@ -326,7 +322,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                 <div className={`library-content ${currentDirectory === null ? "" : "subdirectory"}`} onContextMenu={(e) => {
                     e.preventDefault();
 
-                    if(directory.length === 0)
+                    if(directory.length === 0 || previewImage)
                     {
                         return;
                     }
@@ -368,7 +364,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                             {currentDirectory.folders.length > 0 && (
                                 <div className='folders'>
                                     {currentDirectory.folders.map((folder) => (
-                                        <div key={folder.path} className='folder' onClick={async() => await openDirectory([...directory, folder.name])} onContextMenu={(e) => {
+                                        <div key={folder.path} className={`folder ${context ? context.path === folder.path ? "selected" : "" : ""}`} onClick={async() => await openDirectory([...directory, folder.name])} onContextMenu={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setContext({path: folder.path, x: e.clientX, y: e.clientY});
@@ -402,7 +398,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                             {currentDirectory.images.length > 0 && (
                                 <div className='images'>
                                     {currentDirectory.images.map((image) => (
-                                        <div key={image.path} className='image' onContextMenu={(e) => {
+                                        <div key={image.path} className={`image ${context ? context.path === image.path ? "selected" : "" : ""}`} onContextMenu={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setContext({path: image.path, x: e.clientX, y: e.clientY});
@@ -478,8 +474,9 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                     </button>
 
                                     <button disabled={!context.path} onClick={async() => {
-                                        await remove(context.path);
+                                        await remove(context.path, { recursive: true });
                                         await openDirectory(directory);
+                                        await refreshReferenceFolders();
                                         setContext(null);
                                     }}>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">

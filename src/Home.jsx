@@ -6,9 +6,44 @@ import Library from './Library';
 
 function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticing, currentWindow })
 {
-    const [referenceFolders, setReferenceFolders] = useState([]);
+    const [referenceFolders, setReferenceFolders] = useState({});
+    const [expandedFolders, setExpandedFolders] = useState([]);
 
     const SUPPORTED_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg"];
+
+    const renderFolder = (folder) => {
+        const hasSubfolders = folder.subfolders?.length > 0;
+        const isExpanded = expandedFolders.includes(folder.path);
+        const isSelected = session.selectedFolders.includes(folder.path);
+
+        return (
+            <div key={folder.path} className='selected-folder'>
+                <div className='selected-folder-row'>
+                    {hasSubfolders ? (
+                        <button type="button" onClick={() => { setExpandedFolders(folders => folders.includes(folder.path) ? folders.filter(path => path !== folder.path) : [...folders, folder.path]); }}>
+                            {isExpanded ? "▾" : "▸"}
+                        </button>
+                    ) : 
+                    (
+                        <span className="selected-folder-spacer"/>
+                    )}
+
+                    <label>
+                        <input type="checkbox" checked={isSelected} onChange={(e) => {
+                            const updatedSelection = e.target.checked ? [...session.selectedFolders, folder.path] : session.selectedFolders.filter(path => path !== folder.path);
+                            setSession(session => ({...session, selectedFolders: updatedSelection}));
+                        }}/>
+
+                        <span>{folder.name}</span>
+                    </label>
+                </div>
+
+                {hasSubfolders && isExpanded && (
+                    <div className="selected-subfolders">{folder.subfolders.map(subfolder => renderFolder(subfolder))}</div>
+                )}
+            </div>
+        );
+    };
 
     const startSession = async() => {
         const references = await getReferences();
@@ -35,20 +70,53 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
 
         for(const folderPath of session.selectedFolders)
         {
-            const entries = await readDir(folderPath);
+            const folderReferences = await getReferencesFromFolder(folderPath);
+            references.push(...folderReferences);
+        }
 
-            for(const entry of entries)
+        const cleanedReferences = removeDuplicates(references);
+
+        return shuffle(cleanedReferences);
+    };
+
+    const getReferencesFromFolder = async(folderPath) => {
+        const references = [];
+        const entries = await readDir(folderPath);
+
+        for(const entry of entries)
+        {
+            const entryPath = await join(folderPath, entry.name);
+
+            if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
             {
-                if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
-                {
-                    const imagePath = await join(folderPath, entry.name);
-                    references.push({name: entry.name, path: imagePath});
-                }
+                references.push({name: entry.name, path: entryPath});
+            }
+
+            else if(entry.isDirectory)
+            {
+                const subfolderReferences = await getReferencesFromFolder(entryPath);
+                references.push(...subfolderReferences);
             }
         }
 
-        return shuffle(references);
+        return references;
     };
+
+    const removeDuplicates = (references) => {
+        const uniqueReferences = [];
+        const paths = new Set();
+
+        for(const reference of references)
+        {
+            if(!paths.has(reference.path))
+            {
+                paths.add(reference.path);
+                uniqueReferences.push(reference);
+            }
+        }
+
+        return uniqueReferences;
+    }
 
     const shuffle = (array) => {
         const arr = [...array];
@@ -115,17 +183,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
 
                         <div className='setup-item'>
                             <label>Selected Folders</label>
-                            <div className='selected-folders'>
-                                {referenceFolders.map(folder => (
-                                    <label key={folder.path}>
-                                        <input type='checkbox' checked={session.selectedFolders.includes(folder.path)} onChange={(e) => {
-                                            const updatedSelection = e.target.checked ? [...session.selectedFolders, folder.path] : session.selectedFolders.filter(folders => folders !== folder.path);
-                                            setSession(session => ({...session, selectedFolders: updatedSelection}));
-                                        }}/>
-                                        <span>{folder.name}</span>
-                                    </label>
-                                ))}
-                            </div>
+                            <div className='selected-folders'>{referenceFolders && renderFolder(referenceFolders)}</div>
                         </div>
 
                         <button className="start-practice" disabled={session.selectedFolders.length === 0} onClick={async() => await startSession()}>Start</button>
