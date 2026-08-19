@@ -167,6 +167,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                     }
 
                     await openDirectory(directory);
+                    await refreshReferenceFolders();
                 }
             });
 
@@ -390,6 +391,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                         if(await pasteItem(directory, currentDirectory.path, clipboard.path))
                                         {
                                             await openDirectory(directory);
+                                            await refreshReferenceFolders();
                                             setClipboard(null); 
                                         }
                                             

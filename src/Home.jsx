@@ -38,8 +38,12 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                     </label>
                 </div>
 
-                {hasSubfolders && isExpanded && (
-                    <div className="selected-subfolders">{folder.subfolders.map(subfolder => renderFolder(subfolder))}</div>
+                {hasSubfolders && (
+                    <div className={`selected-subfolders ${isExpanded ? "expanded" : ""}`}>
+                        <div className="selected-subfolders-content">
+                            {folder.subfolders.map(subfolder => renderFolder(subfolder))}
+                        </div>
+                    </div>
                 )}
             </div>
         );
@@ -186,7 +190,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                             <div className='selected-folders'>{referenceFolders && renderFolder(referenceFolders)}</div>
                         </div>
 
-                        <button className="start-practice" disabled={session.selectedFolders.length === 0} onClick={async() => await startSession()}>Start</button>
+                        <button className="start-practice" disabled={session.selectedFolders.length === 0 || referenceFolders.subfolders.length === 0} onClick={async() => await startSession()}>Start</button>
                     </div>
                 </div>
             </div>
