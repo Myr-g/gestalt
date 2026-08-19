@@ -190,7 +190,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                             <div className='selected-folders'>{referenceFolders && renderFolder(referenceFolders)}</div>
                         </div>
 
-                        <button className="start-practice" disabled={session.selectedFolders.length === 0 || referenceFolders.subfolders.length === 0} onClick={async() => await startSession()}>Start</button>
+                        <button className="start-practice" disabled={session.selectedFolders.length === 0 || referenceFolders.subfolders?.length === 0} onClick={async() => await startSession()}>Start</button>
                     </div>
                 </div>
             </div>
