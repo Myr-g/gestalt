@@ -3,7 +3,7 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, readDir } from '@tauri-apps/plugin-fs';
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { createFolder, importFolderFromDialog, importFolderFromPath, importImageFromPath, renameItem, pasteItem, deleteItem } from './LibraryFS';
-import './App.css';
+import './css/Library.css';
 
 function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS, currentWindow })
 {

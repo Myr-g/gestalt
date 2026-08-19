@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
 import { join } from '@tauri-apps/api/path';
 import { readDir } from '@tauri-apps/plugin-fs';
-import './App.css'
 import Library from './Library';
+import './css/Home.css';
 
-function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticing, currentWindow })
+function Home({ libraryPath, setLibraryPath, session, setSession, setIsGestureDrawing, currentWindow })
 {
-    const [referenceFolders, setReferenceFolders] = useState({});
-    const [expandedFolders, setExpandedFolders] = useState([]);
+    const [referenceFolders, setReferenceFolders] = useState({}); // all folders in the 'References' folder
+    const [expandedFolders, setExpandedFolders] = useState([]); // state to keep track of which folders have been expened under 'Selected Folders'
 
-    const SUPPORTED_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg"];
+    const SUPPORTED_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg"]; // basic image types for simplicity
 
+    // rendering logic for the 'Selected Folders' section of the session setup
     const renderFolder = (folder) => {
         const hasSubfolders = folder.subfolders?.length > 0;
         const isExpanded = expandedFolders.includes(folder.path);
@@ -49,14 +50,16 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
         );
     };
 
+    // start a gesture drawing session
     const startSession = async() => {
-        const references = await getReferences();
+        const references = await getReferences(); // collect all references from selected folders
 
-        if (references.length === 0)
+        if(references.length === 0)
         {
             return;
         }
 
+        // update session fields
         setSession(session => ({
             ...session,
             references: references,
@@ -66,9 +69,10 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
             startTime: Date.now()
         }));
 
-        setIsPracticing(true);
+        setIsGestureDrawing(true); // update gesture drawing flag
     };
 
+    // collects all references from the selected folders, puts them into a list, deduplicates, then shuffles them
     const getReferences = async() => {
         const references = [];
 
@@ -91,11 +95,13 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
         {
             const entryPath = await join(folderPath, entry.name);
 
+            // adds them to the list only if they are of the supported image types
             if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
             {
                 references.push({name: entry.name, path: entryPath});
             }
 
+            // recurse
             else if(entry.isDirectory)
             {
                 const subfolderReferences = await getReferencesFromFolder(entryPath);
@@ -106,6 +112,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
         return references;
     };
 
+    // if a selected folder and one of its subfolders have both been selected, ensures each reference will only be added to the list once
     const removeDuplicates = (references) => {
         const uniqueReferences = [];
         const paths = new Set();
@@ -190,7 +197,7 @@ function Home({ libraryPath, setLibraryPath, session, setSession, setIsPracticin
                             <div className='selected-folders'>{referenceFolders && renderFolder(referenceFolders)}</div>
                         </div>
 
-                        <button className="start-practice" disabled={session.selectedFolders.length === 0 || referenceFolders.subfolders?.length === 0} onClick={async() => await startSession()}>Start</button>
+                        <button className="start-button" disabled={session.selectedFolders.length === 0 || referenceFolders.subfolders?.length === 0} onClick={async() => await startSession()}>Start</button>
                     </div>
                 </div>
             </div>

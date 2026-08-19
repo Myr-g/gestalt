@@ -1,34 +1,30 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
 import { mkdir, copyFile, remove } from "@tauri-apps/plugin-fs";
+import './css/GestureDrawing.css';
 
-import './App.css';
-
-function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts })
+function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing, shortcuts })
 {
     const [timeRemaining, setTimeRemaining] = useState(session.timer);
     const [paused, setPaused] = useState(false);
 
+    const viewportRef = useRef(null);
+
+    const [imageSize, setImageSize] = useState({width: 0, height: 0});
     const [workspacePadding, setWorkspacePadding] = useState({x: 0, y: 0});
 
-    const [zoom, setZoom] = useState(0.25);
-    const [imageSize, setImageSize] = useState({width: 0, height: 0});
-
-    const viewportRef = useRef(null);
-    const fitZoom = viewportRef.current && imageSize.width > 0 ? Math.min(viewportRef.current.clientWidth / imageSize.width, viewportRef.current.clientHeight / imageSize.height) : 1;
+    const [zoom, setZoom] = useState(1);
+    const [fitZoom, setFitZoom] = useState(1);
 
     const MIN_ZOOM = 0.25;
     const MAX_ZOOM = 10;
-    const ZOOM_STEP = 0.25; 
+    const ZOOM_STEP = 0.25;
+    
+    const pendingScroll = useRef(null);
 
     const [dragging, setDragging] = useState(false);
-    const dragStart = useRef({
-        x: 0,
-        y: 0,
-        scrollLeft: 0,
-        scrollTop: 0
-    });
+    const dragStart = useRef({x: 0, y: 0, scrollLeft: 0, scrollTop: 0});
 
     const [rotation, setRotation] = useState(0);
 
@@ -71,8 +67,11 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
         const scaleX = viewport.clientWidth / imageSize.width;
         const scaleY = viewport.clientHeight / imageSize.height;
 
+        const newFitZoom = Math.min(scaleX, scaleY);
+
         setWorkspacePadding({x: viewport.clientWidth / 2, y: viewport.clientHeight / 2});
-        setZoom(Math.min(scaleX, scaleY));
+        setZoom(newFitZoom);
+        setFitZoom(newFitZoom);
 
         requestAnimationFrame(() => {
             viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
@@ -80,20 +79,24 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
         });
     };
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if(imageSize.width > 0)
         {
-            fitImage();
             setRotation(0);
-            setZoom(fitZoom);
+            fitImage();
         }
     }, [imageSize]);
 
     const handleWheel = (e) => {
         e.preventDefault();
-        e.stopPropagation();
-        
+
         const viewport = viewportRef.current;
+
+        if(!viewport)
+        {
+            return;
+        }
+
         const rect = viewport.getBoundingClientRect();
 
         const mouseX = e.clientX - rect.left;
@@ -102,19 +105,10 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
         setZoom(currentZoom => {
             const newZoom = e.deltaY < 0 ? Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP) : Math.max(fitZoom, currentZoom - ZOOM_STEP);
 
-            if(newZoom === currentZoom) 
+
+            if(newZoom === currentZoom)
             {
                 return currentZoom;
-            }
-
-            if(newZoom === fitZoom)
-            {
-                requestAnimationFrame(() => {
-                    viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
-                    viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
-                });
-
-                return newZoom;
             }
 
             const ratio = newZoom / currentZoom;
@@ -122,16 +116,10 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
             const imageX = viewport.scrollLeft + mouseX - workspacePadding.x;
             const imageY = viewport.scrollTop + mouseY - workspacePadding.y;
 
-            const newImageX = imageX * ratio;
-            const newImageY = imageY * ratio;
-
-            const newScrollLeft =  workspacePadding.x + newImageX - mouseX;
-            const newScrollTop = workspacePadding.y + newImageY - mouseY;
-
-            requestAnimationFrame(() => {
-                viewport.scrollLeft = newScrollLeft;
-                viewport.scrollTop = newScrollTop;
-            });
+            pendingScroll.current = {
+                left: workspacePadding.x + imageX * ratio - mouseX,
+                top: workspacePadding.y + imageY * ratio - mouseY
+            };
 
             return newZoom;
         });
@@ -153,6 +141,20 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
             viewport.removeEventListener("wheel", handleWheel);
         };
     }, [handleWheel]);
+
+    useLayoutEffect(() => {
+        const viewport = viewportRef.current;
+
+        if(!viewport || !pendingScroll.current)
+        {
+            return;
+        }
+
+        viewport.scrollLeft = pendingScroll.current.left;
+        viewport.scrollTop = pendingScroll.current.top;
+
+        pendingScroll.current = null;
+    }, [zoom]);
 
     const handleMouseDown = (e) => {
         if(e.button !== 0)
@@ -215,7 +217,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
 
         if(nextIndex >= session.references.length)
         {
-            endPractice();
+            endSession();
             return;
         }
 
@@ -232,7 +234,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
         setPaused(false);
     };
 
-    const endPractice = () => {
+    const endSession = () => {
         setPaused(true);
         getDuration();
         setShowSummary(true);
@@ -319,7 +321,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
                 if(e.key === shortcuts.endSession)
                 {
                     e.preventDefault();
-                    endPractice();
+                    endSession();
                 }
             }
         };
@@ -329,11 +331,11 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [previousReference, nextReference, endPractice]);
+    }, [previousReference, nextReference, endSession]);
 
     return(
         <>
-            <div className="practice">
+            <div className="gesture-drawing">
                 {session.mode === "Timed" && (
                     <span className='reference-timer'>{timeRemaining}</span>
                 )}
@@ -384,7 +386,7 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
                         </svg>
                     </button>
 
-                    <button className='end-button' onClick={() => endPractice()}>
+                    <button className='end-button' onClick={() => endSession()}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512">
 	                        <path d="M0 0h512v512H0z" fill="none" />
 	                        <path fill="currentColor" d="M392 432H120a40 40 0 0 1-40-40V120a40 40 0 0 1 40-40h272a40 40 0 0 1 40 40v272a40 40 0 0 1-40 40" />
@@ -429,11 +431,11 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
 
                         <div className='summary-actions'>
                             {archiveSelection.length <= 0 && (
-                                <button onClick={() => setIsPracticing(false)}>Finish</button>
+                                <button onClick={() => setIsGestureDrawing(false)}>Finish</button>
                             )}
                             
                             {archiveSelection.length > 0 && (
-                                <button onClick={async() => { await archiveReferences(); setIsPracticing(false); }}>Archive & Finish</button>
+                                <button onClick={async() => { await archiveReferences(); setIsGestureDrawing(false); }}>Archive & Finish</button>
                             )}
                         </div>
                     </div>
@@ -443,4 +445,4 @@ function Practice({ libraryPath, session, setSession, setIsPracticing, shortcuts
     )
 }
 
-export default Practice;
+export default GestureDrawing;

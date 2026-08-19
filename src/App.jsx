@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import './App.css';
 import Home from './Home';
-import Practice from './Practice';
+import GestureDrawing from './GestureDrawing';
+import './css/App.css';
 
 function App() 
 {
-  const [libraryPath, setLibraryPath] = useState(null);
-  const [isPracticing, setIsPracticing] = useState(false);
+  const [libraryPath, setLibraryPath] = useState(null); // location of the app's library in AppData
+  
+  // relevant fields for the gesture drawing session
   const [session, setSession] = useState({
     mode: "Manual",
     timer: 30,
@@ -20,8 +21,11 @@ function App()
     startTime: null
   });
 
-  const [showSettings, setShowSettings] = useState(false);
+  const [isGestureDrawing, setIsGestureDrawing] = useState(false); // flag to change screen from home to gesture drawing
 
+  const [showSettings, setShowSettings] = useState(false); // flag to show settings panel
+
+  // theme toggling
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("theme") || "Dark";
   });
@@ -31,6 +35,7 @@ function App()
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // default shortcut keys
   const defaultShortcuts = {
     rotateClockwise: "ArrowUp",
     rotateCounterClockwise: "ArrowDown",
@@ -40,11 +45,13 @@ function App()
     endSession: "Escape",
   };
 
+  // shortkey key mapping
   const [shortcuts, setShortcuts] = useState(() => {
     const shortcutSettings = localStorage.getItem("shortcutSettings");
     return shortcutSettings ? JSON.parse(shortcutSettings) : defaultShortcuts;
   });
 
+  // update shortcut settings when one is changed
   useEffect(() => {
     localStorage.setItem("shortcutSettings", JSON.stringify(shortcuts));
   }, [shortcuts]);
@@ -60,6 +67,7 @@ function App()
     const handleShortcutChange = (e) => {
       e.preventDefault();
 
+      // whitelisted keys
       const validShortcutKey = /^[a-zA-Z0-9]$/.test(e.key) || ["Escape", "Backspace", "Enter", " ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
 
       if(!validShortcutKey)
@@ -68,7 +76,7 @@ function App()
       }
 
       const isLetter = /^[a-zA-Z]$/.test(e.key);
-      const shortcutKey = isLetter ? e.key.toLowerCase() : e.key;
+      const shortcutKey = isLetter ? e.key.toLowerCase() : e.key; // normalize to lowercase if the key is a letter
 
       setShortcuts(shortcuts => ({...shortcuts, [changingShortcut]: shortcutKey}));
       setChangingShortcut(null);
@@ -100,7 +108,7 @@ function App()
     return key;
   };
 
-  const currentWindow = getCurrentWindow();
+  const currentWindow = getCurrentWindow(); // for minimize, maximize, close, drag & drop, etc.
 
   return (
     <>
@@ -144,12 +152,12 @@ function App()
         </div>
 
         <div className='content'>
-          {!isPracticing && (
-            <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing} currentWindow={currentWindow}/>
+          {!isGestureDrawing && (
+            <Home libraryPath={libraryPath} setLibraryPath={setLibraryPath} session={session} setSession={setSession} setIsGestureDrawing={setIsGestureDrawing} currentWindow={currentWindow}/>
           )}
 
-          {isPracticing && (
-            <Practice libraryPath={libraryPath} session={session} setSession={setSession} setIsPracticing={setIsPracticing} shortcuts={shortcuts}/>
+          {isGestureDrawing && (
+            <GestureDrawing libraryPath={libraryPath} session={session} setSession={setSession} setIsGestureDrawing={setIsGestureDrawing} shortcuts={shortcuts}/>
           )}
         </div>
 

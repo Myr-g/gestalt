@@ -1,0 +1,314 @@
+/*---- Themes ----*/
+[data-theme = "Light"] {
+  --bg-page: #f3f3f3;
+  --bg-panel: #f3f3f3;
+  --bg-header: #e5e5e5;
+  --bg-folder: #fdfdfd;
+  --bg-viewport: #c0c0c0;
+
+  --text-main: #222;
+  --text-muted: #555;
+
+  --accent: rgba(102, 117, 134, 1);
+  --breadcrumb-hover: #ccc;
+  --folder-hover: #ddd;
+
+  --outline: #aaa;
+  --border: #bbb;
+  --shadow: rgba(0, 0, 0, 0.08);
+
+  --scrollbar-track: #ccc;
+  --scrollbar-thumb: #999;
+  --scrollbar-thumb-hover: #777;
+}
+
+[data-theme="Dark"] {
+  --bg-page: #202020;
+  --bg-panel: #2b2b2b;
+  --bg-header: #323232;
+  --bg-folder: #262626;
+  --bg-viewport: #2b2b2b;
+
+  --text-main: #e6e6e6;
+  --text-muted: #a0a0a0;
+
+  --accent: #4A5563;
+  --breadcrumb-hover: #444;
+  --folder-hover: #333;
+
+  --outline: #555;
+  --border: #333;
+  --shadow: rgba(0, 0, 0, 0.6);
+
+  --scrollbar-track: #222;
+  --scrollbar-thumb: #444;
+  --scrollbar-thumb-hover: #666;
+}
+
+/*---- General ----*/
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  width: 100%;
+  max-width: none;
+}
+
+body {
+  margin: 0;
+
+  background: var(--bg-page);
+  color: var(--text-main);
+
+  font-family: Inter, system-ui, sans-serif;
+
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 12px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/*---- App ----*/
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.title-bar {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  height: 24px;
+
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.title-bar-app-name {
+  position: absolute;
+  left: 50%;
+
+  margin: 0;
+
+  font-size: 0.9rem;
+  color: var(--text-muted);
+
+  pointer-events: none;
+
+  transform: translateX(-50%);
+}
+
+.title-bar-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-left: auto;
+  margin-right: 0.125rem;
+}
+
+.title-bar-actions button {
+  padding: 0;
+
+  background: none;
+  border: none;
+  
+  color: var(--text-main);
+
+  -webkit-app-region: no-drag;
+}
+
+.title-bar-actions button:hover {
+  color: var(--text-muted);
+}
+
+/*---- App Header ----*/
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  height: 2.75rem;
+  padding: 0 0.75rem;
+
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--outline);
+
+  user-select: none;
+}
+
+.app-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+
+  color: var(--text-main);
+}
+
+.settings-toggle {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+
+  color: var(--text-muted);
+
+  cursor: pointer;
+
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.settings-toggle:hover {
+  color: var(--text-main);
+}
+
+/*---- Settings Panel ----*/
+.settings-overlay {
+  position: fixed;
+  top: 24px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: rgba(0, 0, 0, 0.35);
+
+  z-index: 1000;
+}
+
+.settings {
+  width: 500px;
+  max-height: 85vh;
+  padding: 0 1rem;
+
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+
+  overflow-y: auto;
+}
+
+.settings h2 {
+  margin: 0;
+  padding: 0.9rem 1rem;
+
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--outline);
+
+  font-size: 1rem;
+}
+
+.settings-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.settings-theme {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--outline);
+}
+
+.settings-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.75rem;
+
+  background: var(--bg-folder);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+
+  color: var(--text-main);
+
+  cursor: pointer;
+
+  transition: background .15s, border-color .15s;
+}
+
+.settings-theme-toggle:hover {
+  background: var(--bg-header);
+  border-color: var(--accent);
+}
+
+.settings-shortcuts {
+  padding: 0.5rem;
+}
+
+.settings-shortcuts-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.75rem;
+
+  background: var(--bg-folder);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.shortcut-action {
+  display: flex;
+  align-items: center;
+
+  color: var(--text-main);
+}
+
+.shortcut-key {
+  min-width: 10rem;
+  padding: 0.25rem 0.5rem;
+
+  background: var(--bg-page);
+  border: 1px solid var(--outline);
+  border-radius: 5px;
+
+  color: var(--text-main);
+
+  text-align: center;
+  font-family: monospace;
+  font-size: 0.85rem;
+
+  cursor: pointer;
+
+  transition: background .15s, border-color .15s;
+}
+
+.shortcut-key:hover {
+  background: var(--bg-header);
+  border-color: var(--accent);
+}
+
+/*---- App Content ----*/
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
