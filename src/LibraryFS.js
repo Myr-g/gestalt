@@ -2,8 +2,9 @@ import { join, basename } from '@tauri-apps/api/path';
 import { mkdir, readDir, copyFile, exists, rename, stat, remove } from '@tauri-apps/plugin-fs';
 import { open } from '@tauri-apps/plugin-dialog';
 
-const SUPPORTED_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg"];
+const SUPPORTED_IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg"]; // basic image types for simplicity
 
+// ensures the name of a folder or image is unique to avoid conflicts
 async function getUniquePath(currentDir, name, extension = null)
 {
     let i = 1;
@@ -24,6 +25,7 @@ async function getUniquePath(currentDir, name, extension = null)
     }
 }
 
+// makes a new folder in the current directory with the default name 'New Folder'
 async function createFolder(currentDir)
 {
     const folderDir = await getUniquePath(currentDir, "New Folder");
@@ -37,6 +39,7 @@ async function createFolder(currentDir)
     return folderDir;
 }
 
+// renames an item in the current directory
 async function renameItem(currentDir, path, name, extension = null)
 {
     const itemPath = await getUniquePath(currentDir, name, extension);
@@ -51,9 +54,10 @@ async function renameItem(currentDir, path, name, extension = null)
     return itemPath;
 }
 
+// opens file dialog to select a folder to import
 async function importFolderFromDialog(currentDir)
 {
-    const folderPath = await open({directory: true, multiple: false});
+    const folderPath = await open({directory: true, multiple: false, recursive: true});
 
     if(!folderPath)
     {
@@ -63,6 +67,7 @@ async function importFolderFromDialog(currentDir)
     return await importFolderFromPath(currentDir, folderPath);
 }
 
+// imports a folder into the current directory from the given absolute path; recursive in case it contains subfolders
 async function importFolderFromPath(currentDir, folderPath)
 {
     const folderName = await basename(folderPath);
@@ -77,8 +82,6 @@ async function importFolderFromPath(currentDir, folderPath)
 
     const entries = await readDir(folderPath);
 
-    let refCount = 0;
-
     for(const entry of entries)
     {
         const sourcePath = await join(folderPath, entry.name);
@@ -91,13 +94,13 @@ async function importFolderFromPath(currentDir, folderPath)
         if(entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension => entry.name.toLowerCase().endsWith(extension)))
         {
             await importImageFromPath(folderDir, sourcePath);
-            refCount += 1;
         }
     }
 
     return folderDir;
 }
 
+// imports an image into the current directory from the given absolute path
 async function importImageFromPath(currentDir, imagePath)
 {
     const imageBasename = await basename(imagePath);
@@ -116,10 +119,12 @@ async function importImageFromPath(currentDir, imagePath)
     return imageDir;
 }
 
+// pastes an item into the current directory from the given absolute path; obviously the item has to still exist to work
 async function pasteItem(directory, currentDir, path)
 {
     const info = await stat(path);
 
+    // ensures only folders can be imported/pasted into the top level 'References' directory
     if(directory[directory.length - 1] === "References" && !info.isDirectory)
     {
         return false;
@@ -138,6 +143,7 @@ async function pasteItem(directory, currentDir, path)
     return true;
 }
 
+// deletes the item at the given absolute path
 async function deleteItem(path)
 {
     try

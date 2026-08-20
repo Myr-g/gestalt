@@ -7,17 +7,23 @@ import './css/Library.css';
 
 function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_IMAGE_EXTENSIONS, currentWindow })
 {
-    const [directory, setDirectory] = useState([]);
-    const [currentDirectory, setCurrentDirectory] = useState(null);
-    const [editingPath, setEditingPath] = useState(null);
-    const [context, setContext] = useState(null);
-    const contextRef = useRef(null);
-    const [clipboard, setClipboard] = useState(null);
-    const [previewImage, setPreviewImage] = useState(null);
+    const [breadcrumbTrail, setBreadcrumbTrail] = useState([]); // relative path in the library
+    const [currentDirectory, setCurrentDirectory] = useState({path: null, folders: [], images: []}); // the absolute path, folders, and images of the current directory
 
+    const [editingPath, setEditingPath] = useState(null); // abolute path of the folder or image being edited
+
+    const [context, setContext] = useState(null); // for the context menu; contains the path of the selected item
+    const contextRef = useRef(null); // ref to close the context menu when clicking outside of it
+    
+    const [clipboard, setClipboard] = useState(null); // contains the path of the item that was copied
+
+    const [previewImage, setPreviewImage] = useState(null); // flag to show a large preview of an image; contains the fields of the image
+
+    // on startup, gets path to the app's library and ensures 'References' and 'Archive' exist
     const loadLibrary = async() => {
         try {
-            const appDir = await appDataDir();
+            const appDir = await appDataDir(); // absolute path of the library
+
             const referencesDir = await join(appDir, "References");
             const archiveDir = await join(appDir, "Archive");
 
@@ -35,6 +41,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         }
     };
 
+    // gets all folders so 'Selected Folders' can be rendered properly
     const getAllFolders = async(folderPath, folderName = "References") => {
         const entries = await readDir(folderPath);
         const subfolders = [];
@@ -51,6 +58,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         return { path: folderPath, name: folderName, subfolders: subfolders };
     };
 
+    // refreshes 'Selected Folders' whenever a change happens in the library
     const refreshReferenceFolders = async() => {
         const referencesDir = await join(libraryPath, "References");
         const folders = await getAllFolders(referencesDir);
@@ -59,6 +67,8 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
     const countReferences = async(folderPath) => {
         const entries = await readDir(folderPath);
+
+        // ensures that only files with the supported image extensions are counted as references
         const references = entries.filter(entry => entry.isFile && SUPPORTED_IMAGE_EXTENSIONS.some(extension =>
             entry.name.toLowerCase().endsWith(extension)
         ));
@@ -66,6 +76,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         return references.length;
     };
 
+    // gets the absolute path, folders, and images in the given directory
     const loadDirectory = async(folderPath) => {
         const entries = await readDir(folderPath);
 
@@ -95,18 +106,19 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         return {path: folderPath, folders, images};
     };
 
-    const openDirectory = async(breadcrumbTrail) => {
-        if(breadcrumbTrail.length === 0) 
+    // opens a directory based on its relative path in the library
+    const openDirectory = async(relativePath) => {
+        if(relativePath.length === 0) 
         {
-            setCurrentDirectory(null);
-            setDirectory([]);
+            setCurrentDirectory({path: null, folders: [], images: []});
+            setBreadcrumbTrail([]);
             return;
         }
 
-        const path = await join(libraryPath, ...breadcrumbTrail);
+        const path = await join(libraryPath, ...relativePath);
         const dir = await loadDirectory(path);
         setCurrentDirectory(dir);
-        setDirectory(breadcrumbTrail);
+        setBreadcrumbTrail(relativePath);
     };
 
     useEffect(() => {
@@ -151,22 +163,23 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         };
     }, [context]);
 
+    // handles drag and drop importing of folders and images
     useEffect(() => {
         const setup = async () => {
             const unlisten = await currentWindow.onDragDropEvent(async(event) => {
                 if(event.payload.type === "drop")
                 {
-                    if(directory[0] !== "References")
+                    if(breadcrumbTrail[0] !== "References")
                     {
                         return;
                     }
 
                     for(const path of event.payload.paths)
                     {
-                        await pasteItem(directory, currentDirectory.path, path);
+                        await pasteItem(breadcrumbTrail, currentDirectory.path, path);
                     }
 
-                    await openDirectory(directory);
+                    await openDirectory(breadcrumbTrail);
                     await refreshReferenceFolders();
                 }
             });
@@ -183,7 +196,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
         return () => {
             cleanup?.();
         };
-    }, [directory]);
+    }, [breadcrumbTrail]);
 
     return (
         <>
@@ -192,10 +205,10 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                     <div className='breadcrumb-trail'>
                         <span className='breadcrumb' onClick={async() => await openDirectory([])}>Library</span>
 
-                        {directory.map((segment, index) => (
+                        {breadcrumbTrail.map((segment, index) => (
                             <span key={index}>
                                 <span className='separator'>/ </span>
-                                <span className='breadcrumb' onClick={async() => await openDirectory(directory.slice(0, index + 1))}>{segment}</span>
+                                <span className='breadcrumb' onClick={async() => await openDirectory(breadcrumbTrail.slice(0, index + 1))}>{segment}</span>
                             </span>
                         ))}
                     </div>
@@ -204,14 +217,14 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                 <div className={`library-content ${currentDirectory === null ? "" : "subdirectory"}`} onContextMenu={(e) => {
                     e.preventDefault();
 
-                    if(directory.length === 0 || previewImage)
+                    if(breadcrumbTrail.length === 0 || previewImage)
                     {
                         return;
                     }
                     
                     setContext({path: null, x: e.clientX, y: e.clientY});
                 }}>
-                    {!currentDirectory && (
+                    {!currentDirectory.path && (
                         <>
                             <div className='library-root'>
                                 <div className='folder' onClick={async() => await openDirectory(["References"])}>
@@ -225,24 +238,24 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                         </>
                     )}
 
-                    {currentDirectory && (
+                    {currentDirectory.path && (
                         <>
                             <div className='actions'>
-                                <button className='back-button' onClick={async() => await openDirectory(directory.slice(0, -1))}>
+                                <button className='back-button' onClick={async() => await openDirectory(breadcrumbTrail.slice(0, -1))}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
                                         <path d="M0 0h24v24H0z" fill="none" />
 	                                    <path fill="currentColor" d="M16.62 2.99a1.25 1.25 0 0 0-1.77 0L6.54 11.3a.996.996 0 0 0 0 1.41l8.31 8.31c.49.49 1.28.49 1.77 0s.49-1.28 0-1.77L9.38 12l7.25-7.25c.48-.48.48-1.28-.01-1.76" />
                                     </svg>
                                 </button>
 
-                                {directory.includes("References") && (
+                                {breadcrumbTrail.includes("References") && (
                                     <>
                                         <button className='new-folder-button' onClick={async() => {
                                             const folderDir = await createFolder(currentDirectory.path);
 
                                             if(folderDir)
                                             {
-                                                await openDirectory(directory);
+                                                await openDirectory(breadcrumbTrail);
                                                 await refreshReferenceFolders();
                                                 setEditingPath(folderDir);
                                             }
@@ -251,7 +264,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                         <button className='import-button' onClick={async() => {
                                             if(await importFolderFromDialog(currentDirectory.path))
                                             {
-                                               await openDirectory(directory);
+                                               await openDirectory(breadcrumbTrail);
                                                await refreshReferenceFolders(); 
                                             }
                                         }}>Import Folder</button>
@@ -262,7 +275,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                             {currentDirectory.folders.length > 0 && (
                                 <div className='folders'>
                                     {currentDirectory.folders.map((folder) => (
-                                        <div key={folder.path} className={`folder ${context ? context.path === folder.path ? "selected" : "" : ""}`} onClick={async() => await openDirectory([...directory, folder.name])} onContextMenu={(e) => {
+                                        <div key={folder.path} className={`folder ${context ? context.path === folder.path ? "selected" : "" : ""}`} onClick={async() => await openDirectory([...breadcrumbTrail, folder.name])} onContextMenu={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setContext({path: folder.path, x: e.clientX, y: e.clientY});
@@ -281,7 +294,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
                                                         if(await renameItem(currentDirectory.path, folder.path, newName || "New Folder"))
                                                         {
-                                                            await openDirectory(directory);
+                                                            await openDirectory(breadcrumbTrail);
                                                             await refreshReferenceFolders();
                                                             setEditingPath(null);
                                                         }
@@ -333,7 +346,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
 
                                                         if(await renameItem(currentDirectory.path, image.path, newName || "New Image", image.extension))
                                                         {
-                                                            await openDirectory(directory);
+                                                            await openDirectory(breadcrumbTrail);
                                                             await refreshReferenceFolders();
                                                             setEditingPath(null);
                                                         }
@@ -388,9 +401,9 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                     </button>
 
                                     <button disabled={!clipboard} onClick={async() => { 
-                                        if(await pasteItem(directory, currentDirectory.path, clipboard.path))
+                                        if(await pasteItem(breadcrumbTrail, currentDirectory.path, clipboard.path))
                                         {
-                                            await openDirectory(directory);
+                                            await openDirectory(breadcrumbTrail);
                                             await refreshReferenceFolders();
                                             setClipboard(null); 
                                         }
@@ -408,7 +421,7 @@ function Library({ libraryPath, setLibraryPath, setReferenceFolders, SUPPORTED_I
                                     <button disabled={!context.path} onClick={async() => {
                                         if(await deleteItem(context.path))
                                         {
-                                            await openDirectory(directory);
+                                            await openDirectory(breadcrumbTrail);
                                             await refreshReferenceFolders();
                                             setContext(null);
                                         }

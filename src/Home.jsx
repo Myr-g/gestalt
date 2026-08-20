@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { join } from '@tauri-apps/api/path';
 import { readDir } from '@tauri-apps/plugin-fs';
 import Library from './Library';

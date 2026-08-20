@@ -6,32 +6,10 @@ import './css/GestureDrawing.css';
 
 function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing, shortcuts })
 {
-    const [timeRemaining, setTimeRemaining] = useState(session.timer);
-    const [paused, setPaused] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(session.timer); // state to display remaining time before reference changes in 'Timed' mode
+    const [paused, setPaused] = useState(false); // flag to pause the timer
 
-    const viewportRef = useRef(null);
-
-    const [imageSize, setImageSize] = useState({width: 0, height: 0});
-    const [workspacePadding, setWorkspacePadding] = useState({x: 0, y: 0});
-
-    const [zoom, setZoom] = useState(1);
-    const [fitZoom, setFitZoom] = useState(1);
-
-    const MIN_ZOOM = 0.25;
-    const MAX_ZOOM = 10;
-    const ZOOM_STEP = 0.25;
-    
-    const pendingScroll = useRef(null);
-
-    const [dragging, setDragging] = useState(false);
-    const dragStart = useRef({x: 0, y: 0, scrollLeft: 0, scrollTop: 0});
-
-    const [rotation, setRotation] = useState(0);
-
-    const [showSummary, setShowSummary] = useState(false);
-    const [duration, setDuration] = useState(null);
-    const [archiveSelection, setArchiveSelection] = useState([]);
-
+    // timer interval
     useEffect(() => {
         if(session.mode !== "Timed" || paused)
         {
@@ -45,6 +23,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         return () => clearInterval(interval);
     }, [session.mode, paused]);
 
+    // move to next reference when timer runs out
     useEffect(() => {
         if(session.mode != "Timed") 
         {
@@ -57,8 +36,33 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         }
     }, [timeRemaining, session.mode]);
 
+    const viewportRef = useRef(null); // reference to the viewport
+
+    const [imageSize, setImageSize] = useState({width: 0, height: 0}); // natural size of each image
+    const [workspacePadding, setWorkspacePadding] = useState({x: 0, y: 0}); // padding around the workspace
+
+    // zooming state & variables
+    const [zoom, setZoom] = useState(1);
+    const [fitZoom, setFitZoom] = useState(1);
+
+    const MAX_ZOOM = 10;
+    const ZOOM_STEP = 0.25;
+    
+    const pendingScroll = useRef(null); // flag to make sure viewport doesnt scroll before zoom state has been properly updated
+
+    const [dragging, setDragging] = useState(false); // flag for panning
+    const dragStart = useRef({x: 0, y: 0, scrollLeft: 0, scrollTop: 0}); // where the mouse starts when panning an image
+
+    const [rotation, setRotation] = useState(0); // rotation state
+
+    const [showSummary, setShowSummary] = useState(false); // flag to show the summary panel
+    const [duration, setDuration] = useState(null); // state to display the duration of the gesture drawing session
+    const [archiveSelection, setArchiveSelection] = useState([]); // list of images selected to be moved to the 'Archive' folder
+
+    // fit the image to the size of the viewport
     const fitImage = () => {
-        if (!viewportRef.current || imageSize.width === 0) {
+        if(!viewportRef.current || imageSize.width === 0) 
+        {
             return;
         }
 
@@ -69,16 +73,20 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
 
         const newFitZoom = Math.min(scaleX, scaleY);
 
-        setWorkspacePadding({x: viewport.clientWidth / 2, y: viewport.clientHeight / 2});
+        setWorkspacePadding({x: viewport.clientWidth / 2, y: viewport.clientHeight / 2}); // adjust padding
+
+        // apply the fit zoom for the image
         setZoom(newFitZoom);
         setFitZoom(newFitZoom);
 
+        // adjust the scroll values of the viewport
         requestAnimationFrame(() => {
             viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
             viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
         });
     };
 
+    // reset the rotation and apply the new workspace padding and zoom values after the image size has been updated
     useLayoutEffect(() => {
         if(imageSize.width > 0)
         {
@@ -87,6 +95,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         }
     }, [imageSize]);
 
+    // zoom handling
     const handleWheel = (e) => {
         e.preventDefault();
 
@@ -99,12 +108,13 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
 
         const rect = viewport.getBoundingClientRect();
 
+        // get position of mouse in viewport
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
         setZoom(currentZoom => {
+            // determine if zooming in or out and get the next zoom level
             const newZoom = e.deltaY < 0 ? Math.min(MAX_ZOOM, currentZoom + ZOOM_STEP) : Math.max(fitZoom, currentZoom - ZOOM_STEP);
-
 
             if(newZoom === currentZoom)
             {
@@ -113,9 +123,11 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
 
             const ratio = newZoom / currentZoom;
 
+            // get position of image in the viewport under mouse
             const imageX = viewport.scrollLeft + mouseX - workspacePadding.x;
             const imageY = viewport.scrollTop + mouseY - workspacePadding.y;
 
+            // set the pending scrollbar values after zooming
             pendingScroll.current = {
                 left: workspacePadding.x + imageX * ratio - mouseX,
                 top: workspacePadding.y + imageY * ratio - mouseY
@@ -142,6 +154,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         };
     }, [handleWheel]);
 
+    // adjust scrollbar values once the zoom state has updated
     useLayoutEffect(() => {
         const viewport = viewportRef.current;
 
@@ -156,6 +169,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         pendingScroll.current = null;
     }, [zoom]);
 
+    // handling for panning
     const handleMouseDown = (e) => {
         if(e.button !== 0)
         {
@@ -193,6 +207,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         setDragging(false);
     };
 
+    // go to the previous reference
     const previousReference = () => {
         if(session.currentIndex === 0)
         {
@@ -212,6 +227,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         setPaused(false);
     };
 
+    // go to the next reference
     const nextReference = () => {
         const nextIndex = session.currentIndex + 1;
 
@@ -234,12 +250,14 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         setPaused(false);
     };
 
+    // end the gesture drawing session and display the summary panel
     const endSession = () => {
         setPaused(true);
         getDuration();
         setShowSummary(true);
     };
 
+    // calculate the duration of the session
     const getDuration = () => {
         if(showSummary)
         {
@@ -254,10 +272,12 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         setDuration(`${minutes}m ${remainingSeconds}s`);
     };
 
+    // get basenames of the selected folders
     const getBaseName = (folderPath) => {
         return folderPath.split(/[/\\]/).pop();
     };
 
+    // move the selected references to the 'Archive' folder; if the folder a reference was pulled from does not yet exist in 'Archive', it is created
     const archiveReferences = async() => {
         const referencesDir = await join(libraryPath, "References");
 
@@ -285,6 +305,7 @@ function GestureDrawing({ libraryPath, session, setSession, setIsGestureDrawing,
         }
     };
 
+    // shortcut key handling
     useEffect(() => {
         const handleKeyDown = (e) => {
             if(!showSummary)
